@@ -1,0 +1,47 @@
+# Phase 5 — macroeconomic scenarios (build plan §7.10).
+#
+# Weights sum to 1. Probability-weighted ECL is the headline; each scenario is
+# also reported separately, and every figure carries an uncertainty band
+# propagated from the macro model's HAC confidence intervals.
+
+scenarios:
+  - name: base
+    weight: 0.50
+    unemployment: 6.0
+    hpi_yoy: 2.0
+    description: >-
+      Central expectation. Unemployment near its long-run average and modest
+      nominal house-price growth.
+  - name: mild_recession
+    weight: 0.35
+    unemployment: 8.0
+    hpi_yoy: -5.0
+    description: >-
+      A conventional downturn. Unemployment rises by a third and house prices
+      fall modestly, eroding but not eliminating borrower equity.
+  - name: severe_stress
+    weight: 0.15
+    unemployment: 10.0
+    hpi_yoy: -20.0
+    description: >-
+      A 2008-scale event. Note this sits well outside the 1999-2006 estimation
+      sample, so the overlay is extrapolating - see the limitation recorded
+      against MACRO_001.
+
+estimation:
+  # §7.10 identification constraints, and the reason the panel starts in 1999.
+  # The effective window is 2001Q1-2006Q4, 24 observations, not 32: the
+  # Case-Shiller index starts in 2000 and the year-on-year change needs four
+  # prior quarters (F-019, MACRO_001). The bounds below are what is requested;
+  # the register records what the fit actually receives.
+  primary_window: [1999Q1, 2006Q4]     # effective 2001Q1-2006Q4, 24 observations
+  comparison_window: [1999Q1, 2019Q4]  # reported alongside, not instead; effective 56
+  covariates: [unemployment, hpi_yoy]  # at most two: 24 serially-correlated points
+  standard_errors: newey_west
+  newey_west_lags: 4                   # one year of quarterly autocorrelation
+  confidence_level: 0.95
+
+backtest:
+  # Feed realised 2008-2009 macro into the pre-2007 model and compare against
+  # realised default rates. Reported whether or not it flatters the model.
+  window: [2008Q1, 2009Q4]

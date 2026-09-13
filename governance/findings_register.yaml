@@ -1,0 +1,1629 @@
+# Findings register (build plan §7.12).
+#
+# Numbered findings raised against this project's own models and data, each with
+# severity, description, impact, remediation, and owner. A review with no
+# findings is not credible.
+#
+# Findings are recorded WHEN FOUND, not assembled at the end. A finding written
+# up after the fact tends to be written to be survivable; one recorded at
+# discovery is written as it actually was.
+#
+# Severity:
+#   high    - materially affects a reported number or invalidates a conclusion
+#   medium  - affects interpretation, or a defensible judgement a reviewer could
+#             reasonably challenge
+#   low     - documentation or robustness; no effect on reported figures
+
+findings:
+  - id: F-001
+    title: COVID-19 payment forbearance contaminates the OOT-benign split
+    severity: high
+    phase_raised: 2
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      The locked default definition (§7.1) treats 90+ days past due as default.
+      Under the CARES Act, borrowers entering COVID-19 payment forbearance were
+      permitted to stop paying without an economic credit event. Those loans
+      register as 90+ DPD in the performance data, so the definition classifies
+      them as defaults.
+
+    evidence: >-
+      In 2020, 46,102 of 61,485 90+ DPD loan-months (75.0%) carry a
+      borrower_assistance_status_code of 'F' (forbearance), against 3.9% in
+      2019. Because a 2019 observation date has a forward window closing in
+      2020, this propagates into the panel: 2,972 of 5,416 defaults in the
+      oot_benign split (54.9%) occur in a month flagged as forbearance. The
+      observed default rate rises from 0.41% at 2019Q1 to 3.83% at 2019Q4,
+      exceeding the 2009Q1 financial-crisis peak of 3.17%.
+
+    impact: >-
+      The oot_benign split is specified as a benign-period contrast for
+      stability testing. As built it is not benign: its measured default rate
+      (1.010%) is inflated roughly 2.5x by a policy intervention rather than by
+      credit deterioration. Any stability or calibration conclusion drawn from
+      this split without conditioning on the flag would be wrong, and would most
+      likely be misread as model degradation.
+
+    remediation: >-
+      A `default_in_forbearance` diagnostic column is now emitted on every panel
+      row, derived from the borrower assistance status in the month the loan
+      first met the default definition. All Phase 3 and Phase 4 metrics on
+      oot_benign must be reported twice: as-is, and excluding forbearance-driven
+      defaults. The locked definition itself is NOT amended - §7.1 forbids
+      revising the target after seeing results, and the divergence here is
+      between the definition's measurement and its economic intent, which is a
+      finding to disclose rather than a bug to silently patch.
+
+    residual_risk: >-
+      Forbearance status is only populated from January 2014, so an equivalent
+      correction cannot be applied to earlier periods. No comparable policy
+      intervention affects 1999-2009, and the train and OOT-stress splits now
+      show exactly zero forbearance-driven defaults, as they must.
+
+    correction_2026_08_30: >-
+      Figures in this finding were restated after defect R-001 (see below) was
+      fixed. The original entry reported 3,255 forbearance defaults (60.1%) and
+      non-zero counts in the pre-2014 splits, both artefacts of a look-ahead in
+      the flag's derivation. Corrected: 2,972 (54.9%), and zero before 2014.
+
+  - id: F-002
+    title: Zero balance code 15 mapped to a credit event by inference, not transcription
+    severity: medium
+    phase_raised: 1
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      Build plan §7.1 lists "note sale" among the credit events constituting
+      default. The User Guide, Release 47, labels the corresponding code (15)
+      "Whole Loan sales". The mapping of code 15 to a credit event is therefore
+      an inference about a renamed label, not a direct transcription.
+
+    impact: >-
+      Affects the target definition. Expected materiality is low: code 15 first
+      appears in the data in 2014 and accounts for roughly 1,200 terminations
+      across all vintages, and such loans are predominantly already seriously
+      delinquent, so the 90+ DPD leg captures them independently.
+
+    remediation: >-
+      Quantify the incremental defaults attributable to code 15 alone, with the
+      DPD leg held out, and record the figure in conf/assumptions.yaml. If
+      material, report portfolio ECL both with and without it.
+
+    residual_risk: "Low. Documented in conf/panel.yaml as whole_loan_sale_note."
+
+  - id: F-003
+    title: Loan-disjoint splits discard observations and reduce OOT sample size
+    severity: medium
+    phase_raised: 2
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      To satisfy the requirement that no loan crosses a split boundary, each
+      loan is allocated to exactly one split and contributes only the
+      observation dates falling inside that split's window. A loan allocated to
+      oot_stress therefore contributes only its 2007-2009 rows; its 1999-2006
+      rows are discarded.
+
+    impact: >-
+      The out-of-time splits are smaller than a date-only partition would give:
+      oot_stress holds 342,603 rows from 42,133 loans and oot_benign 536,028
+      rows from 49,550 loans, against 2,046,874 training rows. Confidence
+      intervals on OOT metrics are correspondingly wider, which matters most for
+      per-decile calibration where bin counts are already small.
+
+    remediation: >-
+      Accepted rather than remediated. The alternative - letting the same loan
+      appear in both train and an out-of-time split - leaks loan-level
+      information across the boundary and makes OOT performance look better than
+      it is. Reliability curves must carry binomial confidence intervals so the
+      reduced precision is visible rather than implicit.
+
+    residual_risk: >-
+      Acceptable. Sample sizes remain adequate for decile-level analysis;
+      the constraint is recorded in conf/panel.yaml under loan_allocation.
+
+  - id: F-004
+    title: Delinquency status at the observation date dominates the scorecard
+    severity: medium
+    phase_raised: 3
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      current_loan_delinquency_status carries an Information Value of 1.6840,
+      well above every other feature (credit_score is next at 1.1543) and above
+      the 0.9 leakage tripwire. It was investigated and cleared as legitimate:
+      it is contemporaneous information known at the observation date, and panel
+      eligibility already excludes loans at 90+ DPD, so these are loans 30-89
+      days late that have not yet defaulted. No forward information is used.
+
+    impact: >-
+      Legitimate but mechanically close to the target. A loan at 60-89 DPD needs
+      only one further month of non-payment to satisfy the 90+ DPD definition,
+      so the feature captures short-horizon payment momentum rather than
+      underlying credit quality. Bins as ['00'] against ['01','02'] with event
+      rates of 0.396% and 21.406%. It receives the largest scorecard
+      coefficient (-0.778), so the model's apparent discrimination is
+      substantially attributable to already-delinquent loans rather than to
+      origination credit quality.
+
+    remediation: >-
+      Retained, because a 12-month IFRS 9 PD model is expected to condition on
+      delinquency at the reporting date - the standard's own 30-DPD Stage 2
+      backstop is exactly this information. However the scorecard must also be
+      fitted and reported WITHOUT it, so the contribution of origination credit
+      quality is visible separately, and so the Phase 5 staging logic is not
+      circular. Not yet done.
+
+    residual_risk: >-
+      Medium until the without-delinquency variant is reported. The risk is
+      interpretive rather than numerical: the model is not wrong, but its
+      headline discrimination could be misattributed to underwriting quality.
+
+  - id: F-005
+    title: Scorecard materially under-predicts default under regime change
+    severity: high
+    phase_raised: 3
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      Calibration is sound in-period and fails out-of-period. The ratio of
+      observed to expected default rate is 1.00 on train and 1.03 on in-time
+      validation, but 3.21 on the 2007-2009 OOT-stress split: the model predicts
+      0.68% where 2.17% was realised. Discrimination degrades far less over the
+      same comparison, with Gini falling only from 0.787 to 0.638, retaining 81%
+      of its power.
+
+    impact: >-
+      Directly material to ECL. Expected credit loss is PD x LGD x EAD, so a PD
+      understated by a factor of 3.2 understates the provision by roughly the
+      same factor before any macro overlay. A model selected on AUC alone would
+      have looked acceptable throughout.
+
+    remediation: >-
+      Two mitigants, both planned rather than complete. First, the Phase 4
+      calibration step (isotonic and Platt, fitted on in-time validation) must
+      be evaluated on both OOT splits. Second, and more fundamentally, this is
+      the gap the Phase 5 macroeconomic overlay exists to close: a
+      point-in-time PD conditioned on unemployment and house prices is intended
+      to move the predicted level with the cycle, which an unconditioned
+      through-the-cycle model cannot do.
+
+    residual_risk: >-
+      Expected to remain material. A macro overlay fitted on 1999-2006 must
+      extrapolate into the stress region, which is itself recorded as a
+      limitation. The honest expectation is that the overlay reduces but does
+      not eliminate the shortfall, and the backtest in Phase 5 will quantify
+      what remains.
+
+  - id: R-001
+    title: Look-ahead in the forbearance flag caused by DuckDB arg_min null semantics
+    severity: high
+    phase_raised: 3
+    date_raised: 2026-08-30
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      The `default_in_forbearance` diagnostic was derived with
+      `arg_min(borrower_assistance_status_code, period) FILTER (WHERE
+      is_default)`. DuckDB's arg_min ignores rows whose ranked VALUE is null, so
+      when the first default month carried no assistance code the aggregate
+      silently skipped forward and returned the code from a LATER default month.
+
+    impact: >-
+      A look-ahead of exactly the kind the §7.3 leakage controls exist to
+      prevent, which the leakage tests could not catch because it occurred
+      inside a diagnostic column rather than a feature. 1,600 loans were
+      falsely flagged as forbearance-driven. The pre-2014 splits reported
+      non-zero forbearance counts (train 103, oot_stress 163,
+      validation_in_time 15) despite the assistance field not existing before
+      January 2014 - an impossibility that should have been noticed and was not.
+      Consequences: the F-001 share was overstated (60.1% against a true 54.9%),
+      and the OOT-benign sensitivity was over-corrected, reporting an
+      observed-over-expected ratio of 1.27 where the true figure is 1.43.
+
+    remediation: >-
+      The ranked value is now wrapped in a struct, which is never null, so the
+      earliest default row always wins and a missing code correctly stays
+      missing. All affected figures restated across the findings register, the
+      assumptions register and the Phase 2 and 3 documentation. Regression
+      tests in tests/test_review_regressions.py assert both the defect and the
+      fix, and the zero-before-2014 invariant is now asserted in
+      tests/test_panel.py.
+
+    residual_risk: >-
+      Low. The wider lesson is recorded: aggregate functions carry null
+      semantics that can constitute look-ahead, and a value that is
+      structurally impossible - a 2005 loan flagged with a field introduced in
+      2014 - is the cheapest available signal that something is wrong.
+
+  - id: R-002
+    title: CSI was blind to changes in missingness
+    severity: medium
+    phase_raised: 3
+    date_raised: 2026-08-30
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      Numeric CSI dropped nulls from both reference and actual before binning,
+      and categorical CSI omitted nulls from both the level set and the
+      denominator. A feature whose null rate moved from 50% to 0% therefore
+      returned a CSI of exactly 0.0.
+
+    impact: >-
+      Directly contradicted the project's own stated principle that a meaningful
+      absence is information, and would have hidden a real and severe form of
+      drift in Phase 6 monitoring: a data feed that starts or stops populating a
+      field is among the most common causes of silent model failure in
+      production.
+
+    remediation: >-
+      Both paths now carry an explicit `__missing__` bin, with the denominator
+      taken over the full population on each side so a shift in the null rate
+      registers as drift. Verified to still return exactly 0.0 for a feature
+      compared against itself, so no drift is manufactured where none exists.
+
+    residual_risk: "Low."
+
+  - id: R-003
+    title: Principal-driver explanations depended on the scoring batch
+    severity: medium
+    phase_raised: 3
+    date_raised: 2026-08-30
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      `Scorecard.principal_drivers` centred each row's points contributions on
+      the mean of the batch supplied to it. A borrower scored alone reported
+      every driver as exactly 0.0, and the same borrower scored alongside
+      different peers received a different explanation.
+
+    impact: >-
+      Would have surfaced directly in the Phase 6 API, where /score receives a
+      single loan and returns its principal drivers. An explanation that varies
+      with who else happened to be in the request is not an explanation of the
+      borrower, and could not be defended to an adjudicator or a validator.
+
+    remediation: >-
+      Contributions are now centred on the mean points vector of the TRAINING
+      population, captured at fit time and stored with the model. Regression
+      tests assert a single-row explanation is non-trivial and identical across
+      three different batch compositions.
+
+    residual_risk: "Low."
+
+  - id: R-004
+    title: CLI logging flags had no effect
+    severity: low
+    phase_raised: 3
+    date_raised: 2026-08-30
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      Logging was configured at module import, before CLI options were parsed,
+      and a configure-once guard then discarded the later call. `--verbose` and
+      `--json-logs` silently did nothing. Two further layers compounded it:
+      structlog's logger caching bound module-level loggers to the import-time
+      configuration, and `get_logger` re-applied the defaults on every call,
+      reverting any explicit choice.
+
+    impact: >-
+      Operational only, with no effect on any reported figure. It would have
+      mattered in Phase 6, where structured JSON logs are the intended
+      production output.
+
+    remediation: >-
+      configure() now reconfigures when settings genuinely change, logger
+      caching is disabled, and get_logger applies defaults only when nothing has
+      been configured. Both flags verified end to end.
+
+    residual_risk: "None."
+
+  - id: F-006
+    title: Both PD candidates fail the calibration dimension under stress
+    severity: high
+    phase_raised: 4
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      The champion/challenger comparison selected LightGBM on a pre-committed
+      rubric, but both candidates score approximately zero on calibration, the
+      most heavily weighted dimension. On the 2007-2009 OOT-stress split the
+      observed-over-expected default rate is 2.80 for LightGBM and 3.21 for the
+      scorecard. The rubric selected the less-bad of two models that both fail
+      the criterion that matters most for expected credit loss.
+
+    evidence: >-
+      Recalibration does not close the gap. Isotonic and Platt, both fitted on
+      the in-time validation split, move OOT-stress O/E only from 2.80 to 2.75
+      and 2.76 for LightGBM, and from 3.21 to 3.11 and 3.03 for the scorecard.
+      Both methods are monotone, so AUC, Gini and KS are unchanged to three
+      decimal places, as they must be.
+
+    impact: >-
+      Material and direct. ECL is PD x LGD x EAD, so a PD understated by a
+      factor of roughly three understates the provision by the same factor
+      before any overlay. Critically, the score PSI on OOT-stress is 0.0004 for
+      LightGBM and 0.0019 for the scorecard - both firmly "stable". A monitoring
+      programme watching only score distribution would have raised nothing at
+      all while the model under-predicted defaults threefold.
+
+    remediation: >-
+      Not remediable by recalibration, and this is the correct result rather
+      than a defect in the calibration step. A mapping estimated on a period
+      whose default rate is 0.68% cannot know the level will triple in a period
+      it never saw. Recalibration corrects a level that is systematically wrong
+      on data you have; it cannot correct a level that is wrong because the
+      economy changed. The Phase 5 point-in-time macroeconomic overlay is the
+      intended remediation, and this finding is the evidence that it is
+      necessary rather than decorative. Phase 6 monitoring must track
+      calibration drift and observed-versus-predicted default rate, not score
+      PSI alone.
+
+    residual_risk: >-
+      Expected to remain material after the overlay. The macro model must be
+      estimated on 1999-2006 and therefore extrapolates into the stress region.
+      The honest expectation is that the overlay reduces but does not eliminate
+      the shortfall; the Phase 5 backtest will quantify what remains.
+
+  - id: F-007
+    title: The selection rubric measured the wrong proxy for explainability
+    severity: low
+    phase_raised: 4
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      The pre-committed rubric scored explainability as 1.0 for an "exact
+      decomposition" and 0.6 for "approximate attribution", with the scorecard
+      assigned 1.0 and SHAP 0.6 a priori. Measurement contradicts the
+      assignment: maximum reconstruction error is 1.14e-13 for scorecard points
+      against the score, and 1.15e-14 for SHAP values plus base value against
+      the log-odds margin. TreeSHAP is exact for tree ensembles, not
+      approximate.
+
+    impact: >-
+      Low. The rule as written was applied unchanged, because rewriting a
+      pre-committed rubric after seeing results defeats the purpose of
+      committing it. The sensitivity was reported instead: equalising
+      explainability at 1.0 gives LightGBM 0.4635 against the scorecard's
+      0.3648, so the selection is unchanged and the margin widens from 0.0387
+      to 0.0987. The decision is robust to the error.
+
+    remediation: >-
+      Restate the dimension for the next review cycle to measure what it
+      actually intended. The genuine distinction is not exactness but that
+      scorecard points are absolute, denominated in a human-readable unit, and
+      enumerable in advance, while SHAP values are relative to a population
+      baseline, expressed in log-odds, and computed per borrower. Both are
+      additive and both are exact. A revised rule must be committed before the
+      next comparison, not adjusted during this one.
+
+    residual_risk: >-
+      None for this decision. The lesson is that a pre-committed rule can be
+      committed and still be wrong, and that the discipline is to apply it as
+      written and report the sensitivity rather than to amend it retroactively.
+
+  - id: F-008
+    title: Lifetime PD beyond 96 months is extrapolated, not fitted
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      The hazard model is fitted on the 1999-2006 window to match the direct
+      12-month model (assumption HAZ_003). No loan in that window exceeds about
+      96 months of age, so the two oldest age bands (96-144 months and 144+) are
+      empty and inestimable. They are dropped from the design matrix, which
+      would otherwise be singular. The fitted baseline covers five bands, with
+      hazard ratios of 2.84, 3.88, 5.06, 5.75 and 4.03 against the 0-6 month
+      reference, reproducing the empirical seasoning peak at 36-60 months.
+
+    impact: >-
+      Lifetime ECL for a 25-year mortgage requires a hazard path out to 300
+      months. Beyond 96 months the path is an extrapolation of the oldest
+      estimable band, not a fitted quantity. Since stage 2 and stage 3 loans are
+      measured on lifetime ECL, this affects the provision for exactly the
+      population where the provision is largest.
+
+    remediation: >-
+      Two options, neither yet implemented. Either fit the baseline on the full
+      1999-2026 risk set to estimate the old-age bands and accept the period
+      mismatch for the baseline only, holding covariates to the training window;
+      or report lifetime ECL under an explicit range of terminal-hazard
+      assumptions. The second is preferred because it makes the uncertainty
+      visible rather than resolving it by assumption. Until then, lifetime ECL
+      figures must carry this limitation.
+
+    residual_risk: >-
+      Material. The empirical hazard on the full risk set declines after 60
+      months, so holding the oldest estimable band flat is likely conservative,
+      but "likely conservative" is not a substitute for an estimate.
+
+  - id: F-009
+    title: The macro overlay under-predicts the crisis by half, and the reason is structural
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-08-30
+    status: open
+    owner: project_author
+
+    description: >-
+      The overlay was estimated on 1999Q1-2006Q4 and then fed the REALISED
+      2008-2009 macro path. It predicts quarterly default rates of 0.92% to
+      1.66% against realised rates of 1.81% to 3.17%. The mean ratio of observed
+      to predicted is 2.04.
+
+    evidence: >-
+      The cause is identified rather than assumed. Year-on-year HPI change in
+      the estimation sample ranges from +1.74% to +16.98% - the sample contains
+      no house-price decline at all, while 2008-2009 realised -18.62% to -5.25%.
+      The fitted HPI coefficient is -0.01934 on the pre-2007 window against
+      -0.04237 on the full 1999-2019 history, a factor of 2.19. Re-running the
+      same backtest with the full-history coefficient gives a ratio of 1.07.
+      The 2.19x coefficient gap accounts almost exactly for the 2.04x shortfall.
+      Note the 1.07 figure is NOT an out-of-sample validation: the full-history
+      fit includes 2008-2009, so it is in-sample by construction. The comparison
+      isolates the mechanism, it does not vindicate the model.
+      Separately, unemployment is not statistically significant in either
+      window: +0.1195 with a Newey-West 95% interval of [-0.0085, +0.2475]
+      pre-2007, and +0.1159 with [-0.0390, +0.2708] on full history. The sign is
+      economically correct in both, but the coefficient is not distinguishable
+      from zero on 24 serially-correlated quarterly observations.
+
+    impact: >-
+      The overlay reduces but does not close the gap identified in F-006. The
+      un-overlaid scorecard understated the crisis default rate by a factor of
+      3.21; the overlay leaves a factor of about 2.04. This is a partial
+      remediation and must not be presented as a solution. It also means the
+      severe-stress scenario, at 10% unemployment and -20% HPI, is an
+      extrapolation well outside anything the estimation sample contains -
+      flagged as such in reports/figures/macro_scenario_shifts.csv.
+
+    remediation: >-
+      No estimation technique recovers a sensitivity the sample does not
+      contain. The honest options are to report the full-history fit alongside
+      the pre-2007 fit as an upper bound on sensitivity, which is done; to
+      propagate the HAC intervals into scenario ECL as a range, which is done;
+      and to state plainly that a stress overlay calibrated on benign data will
+      under-predict stress. The scenario ECL band for severe stress is $60.48M
+      to $333.75M against a point estimate of $143.10M - a factor of 5.5 from
+      end to end, which is the correct representation of what is known.
+
+    residual_risk: >-
+      High and irreducible with this estimation sample. This is the central
+      methodological limitation of the project and belongs in the executive
+      summary of the validation report, not only in this register.
+
+  - id: F-010
+    title: The end-to-end ECL run uses a portfolio-constant PD, degenerating the SICR sensitivity
+    severity: medium
+    phase_raised: 5
+    date_raised: 2026-08-30
+    status: remediated
+    owner: project_author
+
+    description: >-
+      The demonstration ECL run applies the portfolio-average 12-month and
+      lifetime PD from the hazard term structure to every loan, rather than a
+      per-loan hazard path. Origination-vintage PD is approximated as 0.6 times
+      the lifetime PD. The SICR ratio is therefore identical for every loan
+      (1.667), so the stage-2 population is either the entire portfolio at
+      thresholds below 1.667 or only the 30-DPD backstop population above it.
+
+    evidence: >-
+      reports/figures/ecl_staging_sensitivity.csv reports stage-2 counts of
+      112,266 at a threshold of 1.5 and exactly 1,524 at 2.0, 2.5, 3.0 and 4.0.
+      A genuine sensitivity would vary smoothly. The 1,524 loans are entirely
+      the delinquency backstop, not the ratio test.
+
+    impact: >-
+      The reported portfolio ECL of $44.23M on $15.91B of exposure (0.278%
+      coverage) is directionally reasonable but is not loan-sensitive, and the
+      ECL_001 sensitivity test is presently vacuous.
+      CORRECTION 2026-08-31: this entry originally asserted that staging order,
+      discounting and the PD x LGD x EAD arithmetic were unit-tested. That was
+      FALSE when written - no test imported riskos.ecl at all. The claim was
+      identified in code review and is retained here rather than deleted,
+      because a false assurance in a governance artifact is a more serious
+      defect than the missing test it concealed. Twenty tests now cover the
+      engine, the competing-risk accounting and the macro overlay
+      (tests/test_ecl_and_hazard.py); see R-008.
+
+    remediation: >-
+      Project the fitted hazard per loan across its own remaining term, using
+      each loan's covariates and age path, and derive a per-loan lifetime PD and
+      an origination-vintage PD from the same model. The projection machinery
+      already exists in train_hazard.project_12m_pd and needs extending to the
+      full remaining term.
+
+    residual_risk: >-
+      Resolved 2026-08-31. `hazard.project_paths` now projects every loan
+      through the fitted hazards using its own covariates, its own age path and
+      its own remaining term, with the origination-vintage PD projected for the
+      same loan from age zero over its original term. Per-loan PD now varies
+      substantially: the 12-month PD runs from 0.048% at the 5th percentile to
+      1.404% at the 95th, a spread of roughly 29x, against a single constant
+      before.
+      Closing this exposed a deeper conceptual issue, raised separately as
+      F-011: the staging sensitivity is still flat, but now for a reason that is
+      a property of the model rather than of the scaffold.
+
+  - id: R-005
+    title: Hazard imputation used the scoring batch median rather than the fitting median
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-08-31
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      The hazard design matrix imputed missing covariates with the median of
+      whatever batch was being scored. Standardisation moments were already
+      carried with the model; the imputation medians were not. A row with a
+      missing credit score therefore imputed to NaN when scored alone, because
+      a single-row batch has no median, and to the batch median otherwise.
+
+    impact: >-
+      The same borrower received a different covariate value depending on who
+      else was in the request, and scored alone received NaN, which propagates
+      silently through the cloglog link into a NaN hazard and then into a NaN
+      PD. This is the same defect class as R-003 in a different module, which
+      is the more useful observation: the fix for R-003 was applied where it was
+      found rather than looked for elsewhere.
+
+    remediation: >-
+      Medians are captured on the fitting sample BEFORE imputation and travel
+      with the model in the Standardisation record alongside the means and
+      standard deviations. Verified that a missing covariate now yields an
+      identical finite value whether scored alone or in a batch.
+
+    residual_risk: >-
+      Low for this module. The general lesson is recorded: any statistic
+      computed from the data at prediction time is a batch dependency, and the
+      audit should be across all modules rather than per finding.
+
+  - id: R-006
+    title: Competing-risk convention was unstated and asymmetric
+    severity: medium
+    phase_raised: 5
+    date_raised: 2026-08-31
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      Review reported that the competing-risk arithmetic was internally
+      inconsistent, on the grounds that event increments exceed the reduction in
+      survival by the cross-product of the two hazards.
+
+    assessment: >-
+      The specific claim does not hold, and the check is recorded here so the
+      disagreement is auditable. The implementation credits default with
+      alive * h_default and never computes a prepayment increment of
+      alive * h_prepay. Under the sequential convention it implicitly used -
+      default resolved before prepayment - the outcome probabilities are
+      P(default) = h_d, P(prepay) = (1 - h_d) * h_p and
+      P(neither) = (1 - h_d) * (1 - h_p), which sum to exactly 1. Verified
+      numerically at exaggerated hazards over 200 periods: 0.168066 + 0.831929
+      + 0.000005 = 1.000000000.
+      The review nevertheless identified a real defect. The convention was
+      unstated, and it is asymmetric: the entire joint mass h_d * h_p is
+      attributed to default rather than shared.
+
+    remediation: >-
+      The convention is now named, documented and selectable. `default_first`
+      remains the default and is the conservative choice; `symmetric` splits the
+      joint mass in proportion to the two hazards and yields 0.84% lower
+      lifetime PD at exaggerated hazards. A `competing_risk_accounting` helper
+      asserts the probabilities close to 1, and that assertion is now a
+      parametrised test.
+
+    residual_risk: "Low. The difference between conventions is under 1%."
+
+  - id: R-007
+    title: Phase 5 was reported as substantially done while unreachable from the CLI
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-08-31
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      The hazard, LGD, macro and ECL modules were written and exercised through
+      ad-hoc scripts, but `riskos evaluate`, `riskos hazard` and `riskos ecl`
+      still raised "not yet built". `make all` could not complete. The README
+      nonetheless described Phase 5 as substantially done.
+
+    impact: >-
+      A reproducibility failure and an overstatement. Results existed only as
+      artefacts produced by commands not present in the repository, which is
+      precisely the condition that makes a model unauditable.
+
+    remediation: >-
+      A `riskos.ecl.run` orchestration module now performs the full sequence -
+      LGD, staging, base ECL, staging sensitivity, macro fit, scenario ECL and
+      the 2008-2009 backtest - and all three commands are wired. Status language
+      in the README now distinguishes what is runnable from what is outstanding.
+
+    residual_risk: >-
+      Low. The wider lesson is that "the module exists" and "the phase runs" are
+      different claims and only the second belongs in a status table.
+
+  - id: R-008
+    title: Scenario ECL bypassed staging, lifetime PD and discounting
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-08-31
+    status: remediated
+    owner: project_author
+    source: code review
+
+    description: >-
+      scenario_ecl computed every scenario as a shifted 12-month PD times LGD
+      times EAD. It did not call assign_stage or compute, so it applied no
+      staging, used the 12-month PD for stage 2 and stage 3 loans that should
+      be measured on lifetime ECL, and applied no discounting. The scenario
+      figures were therefore not a stressed version of the base ECL they were
+      presented against.
+
+    remediation: >-
+      Scenarios now run through the same assign_stage and compute path as the
+      base figure, with both the 12-month and lifetime PD shifted so that stage
+      2 and 3 loans respond to the scenario at all.
+      Routing scenarios through the real mechanics immediately exposed a further
+      problem that the shortcut had concealed: re-deriving the stage under each
+      scenario compares a stressed lifetime PD against an unstressed
+      origination PD, which pushed all 112,266 loans into stage 2 in every
+      scenario and tripled base ECL through an artefact. Staging is therefore
+      held fixed at the base assignment, which also matches the common practice
+      of staging once on a probability-weighted basis and varying only the loss
+      measurement. Per-scenario re-staging requires a scenario-conditioned
+      origination PD and is blocked behind F-010.
+      Probability-weighted ECL is $79.44M, against $187.20M under the artefact
+      and $80.49M under the original shortcut.
+
+    residual_risk: >-
+      Medium, tracked under F-010. Scenario ECL is correct given a fixed stage
+      mix, but the stage mix itself cannot respond to the scenario until the
+      per-loan hazard projection is built.
+
+  - id: F-011
+    title: The hazard specification cannot detect SICR, so IFRS 9 staging collapses to the DPD backstop
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-08-31
+    status: open
+    owner: project_author
+
+    description: >-
+      With per-loan PDs in place (F-010 remediated), the IFRS 9 SICR ratio -
+      lifetime PD now against lifetime PD at origination - is tightly clustered
+      at 1.0: p1 0.5246, p25 0.9291, p50 0.9971, p75 1.0033, p99 1.1137.
+      Exactly 0.0000% of the 112,266-loan portfolio exceeds the registered 2.0
+      threshold, and only 41.8% exceed 1.0 at all.
+
+    evidence: >-
+      The cause is structural, not numerical. The hazard model contains
+      origination covariates (credit score, LTV, DTI, note rate, original UPB,
+      number of borrowers) and a loan-age baseline. Every one of those is fixed
+      at origination except age. Nothing in the specification updates as a
+      borrower's credit quality changes, so the model's estimate of a loan's
+      lifetime risk today differs from its estimate at origination only through
+      seasoning and a shorter remaining term. The correlation between loan age
+      and the SICR ratio is -0.587, confirming the ratio is a function of the
+      clock and nothing else.
+
+    impact: >-
+      IFRS 9 staging is fundamentally a test of CHANGE in credit risk. A model
+      whose only dynamic input is elapsed time cannot express that change, so
+      the ratio test never fires and stage 2 is populated entirely by the 30-DPD
+      backstop - 1,524 loans, 1.36% of the portfolio. The registered ECL_001
+      sensitivity is correspondingly flat across thresholds from 1.5 to 4.0, and
+      is not evidence that the threshold is immaterial; it is evidence that the
+      model cannot respond to it.
+
+    remediation: >-
+      Add time-varying covariates to the risk-set specification. The obvious
+      candidates are already present in the risk set and were deliberately
+      excluded from the hazard covariate list: current delinquency status, which
+      is the strongest single predictor in the dataset (F-004), and a
+      mark-to-market LTV built from the loan's current balance and a state-level
+      HPI path. Both update as credit quality changes, which is what the SICR
+      test requires. Note the interaction with F-004: delinquency status is
+      mechanically close to the target and would dominate, so a specification
+      using it must report the model with and without.
+
+    residual_risk: >-
+      PARTIALLY REMEDIATED 2026-09-01. Two time-varying covariates were added to
+      the hazard specification: mark-to-market LTV, which moves with both
+      amortisation and house prices, and the amortisation ratio. The
+      origination-vintage comparator now resets those covariates to their
+      day-one values, so the SICR test asks the question the standard actually
+      asks - has THIS loan's risk increased since ITS origination.
+      The ratio now varies: p25 0.985, p50 1.004, p75 1.054, p95 1.128, with
+      0.175% of the portfolio crossing the 2.0 threshold against exactly
+      0.0000% before. The staging test is therefore live rather than inert.
+      Residual risk is medium rather than high. A crossing rate of 0.175% is low
+      but economically defensible for a 1999-2006 book, where house prices rose
+      throughout and few loans deteriorated on a mark-to-market basis; the same
+      specification applied across the crisis would be expected to move far more
+      loans. What remains outstanding is a specification that can also use
+      delinquency state without degenerating - see F-012 - and validation of the
+      staging outcome against a period containing genuine deterioration.
+
+  - id: F-012
+    title: Delinquency state cannot enter the hazard model as a linear term
+    severity: medium
+    phase_raised: 5
+    date_raised: 2026-09-01
+    status: remediated
+    owner: project_author
+
+    description: >-
+      Adding months delinquent as a linear covariate to the cloglog hazard makes
+      the model degenerate. The fitted intercept collapses from -9.319 to
+      -27.397 and the coefficient on the delinquency term rises to 1.507. The
+      consequence is that the hazard for any loan that is CURRENT falls to
+      effectively zero: mean 12-month PD across the portfolio drops from 0.469%
+      to 0.0011%, against a realised rate of 0.694%.
+
+    evidence: >-
+      DIAGNOSIS CORRECTED 2026-09-08. This finding originally recorded the cause
+      as "a range problem, not an estimation failure", citing empirical hazards
+      of 0.000528 when current, 0.16 at 30-59 days and 0.57 at 60-89 days. Those
+      figures are not reproducible on the risk set and the diagnosis was wrong.
+      The real cause is target contamination. `months_delinquent` was taken
+      CONTEMPORANEOUSLY, and default is DEFINED as reaching 90 days past due, so
+      the covariate was the outcome: on the 1999-2006 fitting window the monthly
+      default hazard is exactly 1.000000 for every row at 3+ months delinquent
+      and exactly 0.000000 for every current row. That is perfect separation,
+      the same defect class as R-009, and it is what drove the intercept to -27.
+      Refitting the contaminated covariate reproduces an intercept of -26.83 and
+      a hazard for current loans of exactly 0.0, confirming the mechanism.
+      Lagging the state by one month, as R-009 did for the balance, removes the
+      separation and yields a genuine predictor: 0.000017 when current, 0.001218
+      at 30-59 days, 0.328234 at 60-89 days. The range problem is real but
+      SECONDARY - what remains after the lag is a span of roughly 19,000x, which
+      a single slope still cannot hold.
+
+    impact: >-
+      The primary specification excludes the term, which satisfies the F-004
+      requirement to report the model without it in any case. The cost is that
+      the hazard model does not use the strongest single predictor available,
+      and its 12-month PD reconciles to the panel at a ratio of about 0.89
+      rather than closer to 1. The wrong diagnosis also carried its own cost:
+      implementing the remediation as originally written - band dummies on the
+      contemporaneous state - would have produced a worse model, because the
+      90+ band would have diverged rather than been estimated.
+
+    why_the_existing_tests_missed_it: >-
+      The leakage suite guards the PANEL against exactly this
+      (`test_delinquency_status_at_t_never_already_satisfies_the_default_definition`
+      asserts no panel row is already 90+ DPD) but there is no equivalent for the
+      risk set, and there cannot be a membership test: in the risk set those rows
+      ARE the events, and `current_loan_delinquency_status` is legitimately
+      allow-listed because for a live loan it is exactly what a PD model should
+      see. The R-009 tests covered the balance-derived covariates specifically
+      and did not generalise to the delinquency state.
+
+    remediation: >-
+      Both halves are implemented. First, the state is lagged one month in
+      `load_risk_set`, so it is known at the start of the month it predicts; the
+      same definition is applied in `with_time_varying`, which scores panel rows,
+      because a covariate meaning "state at the start of the month" when fitted
+      and "state now" when scored reintroduces the contamination at prediction
+      time. Second, the state enters as band dummies via
+      `design_matrix(delinquency_bands=True)`, registered as HAZ_005, so each
+      state carries its own level. Fitted on 2.38M loan-months the banded
+      specification reproduces the empirical hazard in every state - ratios
+      1.000, 1.000 and 0.9996 - against the primary specification's 29.1x
+      over-prediction for current loans and 131x under-prediction at 60-89 days.
+      A `lag_delinquency=False` switch is retained solely so a regression test
+      can assert the contamination is real, on the R-009 principle.
+
+    residual_risk: >-
+      Low for this finding and unchanged for reported figures. The banded
+      specification is fitted and reported in
+      reports/figures/hazard_specification_comparison.csv but is deliberately
+      NOT promoted to primary, because it cannot be projected across a horizon
+      without a delinquency transition model - see F-014, raised by this work.
+      The primary specification therefore still excludes the state, which F-004
+      requires independently, and no reported ECL figure changes.
+
+  - id: F-013
+    title: The prepayment hazard does not converge
+    severity: medium
+    phase_raised: 5
+    date_raised: 2026-09-01
+    status: remediated
+    owner: project_author
+
+    description: >-
+      The cause-specific prepayment GLM reports converged=False under both
+      specifications, on 45,543 prepayment events across 2.38 million
+      loan-months. The default hazard converges normally on the same design
+      matrix. Overflow warnings are emitted from the cloglog inverse link
+      during fitting.
+
+    impact: >-
+      Prepayment enters the lifetime PD only through the survival term, where it
+      reduces cumulative default by roughly 10% over twelve months and more over
+      a full term, so a mis-estimated prepayment hazard biases lifetime PD and
+      therefore stage 2 and stage 3 ECL. The direction is not established: a
+      non-converged fit may be over- or under-stating the prepayment rate.
+
+    remediation: >-
+      Diagnose before adjusting. The prepayment hazard is roughly 0.019 monthly
+      against 0.0005 for default, so the linear predictor operates in a range
+      where the cloglog inverse is closer to saturation and more prone to
+      overflow. Candidate remedies are to raise the IRLS iteration limit, to
+      rescale or drop a covariate driving the instability, or to fit prepayment
+      with a logit link, which is better conditioned at higher hazards and
+      remains an acceptable discrete-time approximation when the per-period
+      probability is small. Any change must be shown not to alter the default
+      hazard.
+
+    residual_risk: >-
+      RESOLVED 2026-09-02, and the hypothesis recorded above was wrong. The
+      cause was not cloglog saturation. Diagnosis showed the prepayment fit
+      running to the 100-iteration limit with coefficients of order 1e14 and a
+      linear predictor spanning [-7.7e14, +2.5e14], which is the signature of
+      separation, not of conditioning - and the default hazard converged in 12
+      iterations on the SAME design matrix, which rules out rank deficiency.
+      The separating covariate was `amortisation_ratio`. See R-009. With the
+      balance lagged by one month, prepayment converges in 8 iterations with a
+      maximum coefficient of 5.249. Recording the incorrect hypothesis alongside
+      the correct diagnosis, because a plausible explanation asserted without
+      measurement is exactly what the diagnosis-before-adjustment rule exists to
+      prevent.
+
+  - id: R-009
+    title: Terminal-state contamination — the risk set's own balance revealed its own outcome
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-09-02
+    status: remediated
+    owner: project_author
+    source: self-diagnosis while investigating F-013
+
+    description: >-
+      The time-varying hazard covariates `amortisation_ratio` and `mtm_ltv` were
+      built from `current_actual_upb` measured in the SAME month as the outcome
+      they were used to predict. A loan's balance in the month it terminates is
+      zero, so the covariate revealed the event exactly.
+
+    evidence: >-
+      In the 1999-2006 risk set, 100.00% of prepayment months carry a balance of
+      exactly zero, against 0.00% of alive months (167 of 10,078,343). Default
+      months are contaminated too, at 12.10%. The separation drove the
+      cause-specific prepayment GLM to coefficients of order 1e14 and a
+      non-converged fit, which is how the defect was noticed at all - it
+      surfaced as the numerical symptom recorded in F-013 rather than as a
+      leakage failure.
+
+    impact: >-
+      Leakage into the prepayment hazard, and therefore into the survival term
+      of every lifetime PD, and therefore into stage 2 and stage 3 ECL. The
+      default hazard was contaminated on the 12.10% of default months carrying a
+      zero balance. Any lifetime figure produced before this fix should be
+      treated as void.
+
+    why_the_existing_tests_missed_it: >-
+      This is the useful part. `current_actual_upb` is legitimately on the
+      allow-list: at an observation date for a LIVE loan it is exactly the
+      exposure the model should see, and the 12-month panel excludes terminated
+      loans by construction so the panel was never affected. The leakage tests
+      assert COLUMN MEMBERSHIP - that no forbidden column reaches a matrix -
+      and no forbidden column did. The defect is that within the risk set, a
+      row's own state encodes its own outcome, which membership tests cannot
+      express. §7.3 says covariates at month m may use only information through
+      m; for an event occurring IN month m the correct rule is information
+      through m-1, and that distinction was not implemented.
+
+    remediation: >-
+      Both balance-derived covariates are now lagged one month, with a loan's
+      first observation falling back to its original balance. Two tests were
+      added: one asserting the raw contamination exists, so the lag is
+      demonstrably protecting against something rather than being decorative,
+      and one asserting the lagged covariate no longer separates the outcome.
+      A third asserts both cause-specific hazards converge with bounded
+      coefficients, since non-convergence was the symptom that exposed this.
+
+    residual_risk: >-
+      Low for the covariates in use. The general lesson is recorded and is
+      broader than this fix: leakage tests that check column membership cannot
+      detect a covariate whose contemporaneous VALUE is determined by the
+      outcome. Any future time-varying covariate must be checked for
+      separation against each outcome, not merely for being on the allow-list.
+
+
+  - id: F-014
+    title: >-
+      A state-conditional hazard cannot be projected forward without a
+      delinquency transition model
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-09-08
+    status: open
+    owner: project_author
+    source: developer_validation
+
+    description: >-
+      The delinquency-banded hazard (F-012) is the better-specified monthly
+      model by a wide margin, yet it is unusable for multi-period PD as it
+      stands. Its 12-month reconciliation against the panel gives a ratio of
+      0.188 - it under-predicts observed defaults by a factor of 5.3 - where the
+      primary specification, which ignores delinquency entirely, gives 0.889.
+      The better model produces the worse forecast.
+
+    evidence: >-
+      The cause is the projection, not the fit. Per-state the banded model is
+      near-exact: predicted against empirical monthly hazard gives ratios of
+      1.000 when current, 1.000 at 30-59 days and 0.9996 at 60-89 days. The
+      primary specification is badly wrong per-state by comparison - 29.1x too
+      high for current loans and 131x too low at 60-89 days - and only looks
+      right in aggregate because those errors offset.
+      `project_12m_pd` ages a loan forward month by month but holds its
+      delinquency state fixed, so a currently-current loan is projected as
+      permanently current at a monthly hazard of 0.000017, giving roughly 0.02%
+      over twelve months. The realised 12-month default rate for such loans is
+      0.386%, because 4.53% of current loan-months enter delinquency within
+      twelve months and the path to default runs THROUGH that transition. The
+      primary specification's 0.000507 monthly hazard for a current loan is not
+      a per-state estimate at all; it is a reduced-form marginal rate that has
+      already averaged over the transitions it does not model, which is exactly
+      why it projects correctly and the banded model does not.
+
+    impact: >-
+      Blocks adoption of the F-012 remediation, and with it the SICR
+      improvements F-011 still needs. IFRS 9 staging is a test of CHANGE in
+      credit risk, and delinquency is the strongest available signal of that
+      change; a lifetime PD that cannot condition on it is measuring something
+      weaker than the standard asks for. No reported figure is wrong today,
+      because the banded specification is not promoted - but the reason it
+      cannot be promoted is this, not any defect in the specification itself.
+
+    why_the_existing_tests_missed_it: >-
+      Nothing tested it: the banded specification did not exist until now. More
+      generally, the projection functions are unit-tested against constant
+      hazards and analytic survival identities, which are exactly the cases in
+      which a fixed covariate path is correct by construction. A test cannot
+      catch a missing transition model by checking arithmetic.
+
+    remediation: >-
+      Estimate a delinquency transition model - a monthly multinomial or Markov
+      transition matrix over current / 30-59 / 60-89, absorbing into default and
+      prepayment - and project the state distribution alongside the age path,
+      taking each month's hazard as the state-weighted average. The machinery is
+      close to what already exists: `project_paths` already carries a survival
+      vector month by month, and the state distribution would ride alongside it.
+      Until that exists the primary specification must remain the reduced-form
+      one, and the banded model must be reported as a diagnostic only.
+
+    residual_risk: >-
+      Medium and disclosed. The reduced-form specification is the correct choice
+      given no transition model, and its 0.889 reconciliation ratio is honest
+      about the remaining gap. The risk is that the reduced-form hazard is a
+      portfolio-average over transitions estimated on 1999-2006, so it carries
+      that period's transition behaviour implicitly and cannot respond to a
+      regime in which loans roll from current to delinquent at a different rate.
+      That is the same structural limitation recorded in F-005 and F-009,
+      reaching the hazard model by a different route.
+
+  - id: R-010
+    title: >-
+      The Phase 5 acceptance criterion had been failing since the time-varying
+      covariates were added
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-09-08
+    status: remediated
+    owner: project_author
+    source: developer_validation
+
+    description: >-
+      `make hazard` could not complete. `_reconcile_against_panel` reads panel
+      rows straight from parquet and passes them to the design matrix, but the
+      panel carries origination fields only - it has no `mtm_ltv` and no
+      `amortisation_ratio`. Once those two covariates were added to the
+      specification on 2026-09-01 to close F-011, the call raised
+      ColumnNotFoundError and the run died at the reconciliation step.
+
+    evidence: >-
+      The committed models/hazard_fit.json was dated 2026-08-30 and its
+      coefficient list contains only the six origination covariates - no
+      mtm_ltv, no amortisation_ratio - so it predates the change and had not
+      been regenerated since. The 0.89 reconciliation ratio quoted in F-012's
+      impact section was read from that stale artifact. `with_time_varying`
+      existed precisely to derive the missing covariates on a panel frame and
+      was simply never called here.
+
+    impact: >-
+      The stated Phase 5 acceptance criterion (build plan section 7.8) - hazard
+      -implied 12-month PD against the direct 12-month model on the same
+      population - had not actually been evaluated for the specification in use.
+      This is the same class of defect as R-007: a phase reported as complete
+      while a step of it could not run. Every hazard artifact under
+      reports/figures/ was stale by the same margin.
+
+    why_the_existing_tests_missed_it: >-
+      No test invokes `run()`. The hazard tests fit specifications directly on a
+      small risk-set sample, which exercises `design_matrix` and `fit_cause` but
+      never the panel-scoring path, and the orchestration tests stub the fitting
+      layer out. A pipeline step that only fails end to end is invisible to both.
+
+    remediation: >-
+      `_reconcile_against_panel` now applies `with_time_varying` to the panel
+      frame before scoring it, so the derived covariates are present and carry
+      the same definitions used at fitting. `make hazard` runs clean and all
+      hazard artifacts have been regenerated; the reconciliation ratio for the
+      current specification is 0.889 on 35,613 panel rows.
+
+    residual_risk: >-
+      Medium, and not closed by this fix. The underlying gap is that no test
+      runs the phase orchestrators end to end, so any pipeline step can rot the
+      same way. A smoke test that runs each `run()` against a small sample would
+      close it; that is not yet written.
+
+  - id: R-011
+    title: An assumption was cited in code while absent from the register
+    severity: medium
+    phase_raised: 5
+    date_raised: 2026-09-08
+    status: remediated
+    owner: project_author
+    source: developer_validation
+
+    description: >-
+      `riskos.models.train_hazard` cited "assumption HAZ_004" for the house
+      -price fallback applied when a loan's origination month predates the HPI
+      series. No HAZ_004 existed in conf/assumptions.yaml. The register ran
+      HAZ_001 to HAZ_003 and then jumped to MACRO_001.
+
+    evidence: >-
+      Extracting every assumption id matching the register's own naming pattern
+      from src/ and differencing it against the register returns exactly one
+      unregistered citation, HAZ_004. The fallback it names is not immaterial:
+      19.13% of loan-months in the 1999-2006 fitting window take it, because the
+      Case-Shiller series begins 2000-01 and the fitting window opens in 1999.
+
+    impact: >-
+      A citation to a non-existent entry is worse than no citation, because it
+      reads as evidence that a number was documented and reviewed when it was
+      not. Build plan rule 5 requires every numeric assumption to live in the
+      register with a source; this one had a plausible-looking reference and no
+      entry behind it.
+
+    why_the_existing_tests_missed_it: >-
+      test_assumptions.py iterates over the entries that ARE registered and
+      checks each has the required fields and an allowed source. Every test ran
+      from the register outwards, so an entry that never existed was invisible
+      to all of them. Nothing ran from the code back to the register.
+
+    remediation: >-
+      HAZ_004 is now registered with its rationale, its 19.13% affected share
+      and a sensitivity test, alongside HAZ_005 for the new delinquency bands.
+      `test_every_assumption_cited_in_the_code_actually_exists` scans src/ for
+      assumption citations and fails on any that do not resolve, closing the
+      direction the suite was missing. A companion assertion pins HAZ_002 and
+      HAZ_005 to the constants the code actually uses, matching the existing
+      drift guards for the PSI and calibration defaults.
+
+    residual_risk: >-
+      Low. Both directions are now tested: registered entries must be complete,
+      and cited entries must exist. Neither test can confirm that a registered
+      rationale is TRUE, which remains a review responsibility.
+
+  - id: R-012
+    title: >-
+      Per-loan PDs were permuted against the portfolio, so every loan was
+      provisioned on another loan's probability of default
+    severity: critical
+    phase_raised: 5
+    date_raised: 2026-09-08
+    status: remediated
+    owner: project_author
+    source: developer_validation
+
+    description: >-
+      `ecl.run.run` builds exposure, LGD, remaining term and the staging frame
+      from the portfolio returned by `load_portfolio`, then calls
+      `per_loan_pds(portfolio)` for the three PD vectors. Inside that function
+      the first statement is `portfolio = with_time_varying(portfolio)`, which
+      rebinds the LOCAL name to a frame that has been through DuckDB. DuckDB
+      does not preserve input row order across a join, so the returned arrays
+      came back in a different order from the frame the caller still held. Every
+      loan was therefore paired with some other loan's PD for staging, for the
+      SICR test and for the PD x LGD x EAD product.
+
+    evidence: >-
+      Calling `per_loan_pds` twice on the same portfolio returned vectors with
+      identical means to eight decimal places and a maximum per-element
+      difference of 0.755 - the signature of a permutation rather than a
+      numerical difference. Two consecutive `make ecl` runs on unchanged code
+      reported portfolio ECL of $36.16M and $36.19M, with stage-2 mean PD moving
+      8.6% between them and the stage-2 population at the 1.5 threshold moving
+      from 2,161 loans to 2,172. After the fix, per-loan PDs are bit-identical
+      across runs and the reported provision is stable.
+
+    impact: >-
+      Every ECL and staging figure produced before this fix is wrong at the loan
+      level, and the portfolio total was wrong too because ECL is a product of
+      per-loan quantities rather than a sum of independent ones. Corrected,
+      portfolio ECL falls from $36.16M to $34.01M on unchanged exposure of
+      $15.91B - a 5.9% reduction in the reported provision - and coverage from
+      0.2273% to 0.2138%. The clearest confirmation is in the staging: stage-2
+      mean PD rises from 0.0237 to 0.0624 against a stage-1 mean of 0.0045. A
+      correctly aligned book puts the high-PD loans in stage 2, roughly 14x
+      stage 1; the permuted book diluted that to about 5x by scattering high PDs
+      across stage 1. The mean PD across the whole portfolio never moved, which
+      is exactly why nothing flagged it.
+
+    why_the_existing_tests_missed_it: >-
+      Every check on the ECL output was a total or a mean, and both are
+      invariant under a permutation of the PD vector. The engine's own unit
+      tests pass arrays and a frame that were constructed together in the test,
+      so they can never observe the misalignment the orchestrator introduces.
+      Nothing asserted that the array returned by one function corresponds
+      row-for-row to the frame held by another, which is the actual contract.
+
+    remediation: >-
+      `with_time_varying` now carries an explicit row index through the query
+      and returns `ORDER BY _row_order`, so it preserves the order it was given
+      for every caller rather than only for this one. `load_risk_set` is
+      likewise pinned with an ORDER BY, because its scan order was moving the
+      standardisation moments in their last bits and made the provision
+      irreproducible at the 1e-14 level even once the permutation was gone.
+      Three regression tests were added, all three verified to fail when the
+      ordering is removed: one asserting order preservation at the source, one
+      scoring a subset of loans and requiring them to get the same PDs they got
+      in the full run, and one asserting run-to-run reproducibility.
+
+    residual_risk: >-
+      Low. One immaterial residual remains: reports/figures/ecl_by_stage.csv is
+      not byte-reproducible, because polars aggregates group sums across threads
+      and the float accumulation order varies. The variation is about 1e-13
+      relative - $0.00003 on $15.7B of exposure - and does not affect any loan's
+      stage or any reported figure at reporting precision. The broader lesson is
+      recorded: any function returning a bare array alongside a frame is a
+      latent alignment defect, and the codebase should prefer returning the
+      frame with the values attached to it.
+
+  - id: R-013
+    title: >-
+      A gitignore pattern kept the entire modelling package out of version
+      control
+    severity: critical
+    phase_raised: 5
+    date_raised: 2026-09-08
+    status: remediated
+    owner: project_author
+    source: developer_validation
+
+    description: >-
+      .gitignore carried `models/` to exclude the fitted-artifact directory at
+      the repo root. A pattern with a trailing slash and no LEADING slash
+      matches a directory of that name at any depth, so it also matched
+      src/riskos/models/. All fourteen modules of the modelling package -
+      scorecard, binning-driven training, the LightGBM challenger, calibration,
+      selection, persistence, explanation, evaluation, plots, and both hazard
+      modules - were therefore untracked and had never been committed.
+
+    evidence: >-
+      `git ls-files src/riskos/models/` returned nothing, and
+      `git check-ignore -v` attributed every file in the package to
+      .gitignore line 17. `git ls-files src/` listed only riskos, features,
+      ingest, metrics and panel. The single commit on the branch is titled
+      "Phases 0-3: ingest, panel, scorecard champion and review remediation"
+      and cannot contain the scorecard it names.
+
+    impact: >-
+      Critical and not a modelling defect at all. The core deliverable of Phases
+      3, 4 and 5 existed only in the working tree: one `git clean`, one fresh
+      clone, or one disk failure and the champion scorecard, the challenger and
+      the hazard model were gone, with no history and no diff. Every claim the
+      repository makes about reproducibility was false for the modelling layer,
+      because a reviewer cloning it would get a package that imports modules
+      which are not there. It also explains why `src/riskos/models/*` never
+      appeared in `git status` while being edited - ignored files are invisible
+      there, so the working tree looked clean throughout.
+
+    why_the_existing_tests_missed_it: >-
+      Nothing tested repository state. The suite tests behaviour of code that is
+      present on disk, and the code was present on disk - it imported, it ran,
+      it passed. No test asked whether the files it was exercising would survive
+      a clone. This is the same shape as R-007 and R-010: a property that only
+      fails outside the process the tests run in.
+
+    remediation: >-
+      The pattern is now anchored as `/models/`, matching the repo root only,
+      and `/mlruns/` was anchored with it for the same reason. Verified that
+      every .py, .yaml, .md and .toml under src, tests, conf, docs and
+      governance is now visible to git, while models/hazard_fit.json and
+      mlruns/ remain correctly ignored.
+      `test_no_source_file_is_hidden_from_version_control` runs `git
+      check-ignore` over those trees and fails on any match; it was verified to
+      fail when the leading slash is removed. The package itself still needs to
+      be added and committed - this finding makes it possible, it does not do it.
+
+    residual_risk: >-
+      Low once committed, and the test prevents recurrence for these trees. Note
+      the same latent trap in the `data/` pattern, which needed `/data` adding
+      alongside it when data/ became a symlink to external storage: an unanchored
+      directory pattern is a repository-wide assertion, not a local one.
+
+  - id: F-015
+    title: >-
+      Score PSI is blind to the 2008 regime change, so drift monitoring gives
+      zero months of warning on the failure it exists to catch
+    severity: high
+    phase_raised: 6
+    date_raised: 2026-09-12
+    status: open
+    owner: project_author
+
+    description: >-
+      The approved champion was scored forward across all 64 quarterly windows
+      from 1999Q1 to 2019Q4 without refitting. Through the entire stress period
+      the score PSI against the development sample stays between 0.0017 and
+      0.0114 - an order of magnitude below the 0.10 "stable" band, and its
+      lowest sustained level anywhere in the timeline. The rule MON-01 never
+      warns and never breaches on any window in 2007, 2008 or 2009.
+
+    evidence: >-
+      Over the same windows, measured calibration collapses. The
+      observed-over-expected ratio runs 1.43 at 2007Q1, 2.08 at 2007Q4, 2.90 at
+      2008Q1 and peaks at 4.72 at 2009Q1: the model under-predicts default by a
+      factor of nearly five while the distribution of the scores it is producing
+      does not move at all. Gini falls from a development-sample level around
+      0.78 to 0.61-0.64 across 2008. The highest in-sample score PSI in the
+      whole run is 0.1545 at 2000Q4, inside the training window, which is higher
+      than every single crisis-period value.
+
+      This is not a quirk of the scorecard. The LightGBM challenger
+      (RISKOS_PD_002) was put through the identical rulebook on the identical
+      64 windows and behaves the same way: its worst stress-period score PSI is
+      0.0112 against the scorecard's 0.0113, while its own calibration ratio
+      runs 1.37, 1.93, 2.63 and 3.91 at the same four quarters. A different
+      model family, a different feature treatment and a different functional
+      form produce the same flat PSI against the same collapsing calibration.
+      The failure is a property of what PSI measures, not of either model.
+
+    impact: >-
+      Drift monitoring on this model buys nothing on the scenario it is
+      nominally there for. The mechanism is straightforward once stated: PSI is
+      an input-side metric and compares two distributions of the model's own
+      output. What changed in 2008 was not the population of borrowers being
+      scored but the mapping from borrower characteristics to default - the same
+      credit score, LTV and DTI carried several times the risk they had carried
+      in 2004. No comparison of input or score distributions can see a change
+      that lives entirely in the relationship between inputs and outcome, and
+      PSI is exactly such a comparison.
+      This directly qualifies the stability dimension of the Phase 4 selection
+      rubric, which weights score PSI at 0.25. That weight was assigned on the
+      reasoning that a model whose score distribution shifts cannot be relied on
+      between redevelopments. That reasoning is sound and the converse does not
+      follow: a model whose score distribution does NOT shift can still have
+      become entirely unfit, and on this portfolio it did.
+
+    remediation: >-
+      Do not tune the MON-01 thresholds; the rule is not mis-calibrated, it is
+      measuring a quantity that does not contain the answer. Two changes are
+      needed instead.
+      First, stop presenting drift as an early-warning control for regime change
+      and label it as what it is: a control for population change and upstream
+      data-supply failure, which are real risks it does detect.
+      Second, add a leading indicator that can see a changing relationship
+      without waiting for the label. The candidate already present in this
+      repository is the macro overlay from Phase 5: the fitted relationship
+      between the quarterly default rate and unemployment and house prices is
+      observable in near real time, so a divergence between the macro-implied
+      default rate and the model's expected rate is computable the quarter it
+      happens rather than twelve months later. F-009 records that this overlay
+      under-predicts the crisis by half, so it would not have called the
+      magnitude, but it would have called the direction in 2007 rather than 2009.
+
+    residual_risk: >-
+      High and unremediated. The honest current position is that NEITHER PD model
+      has a leading indicator of the failure mode that matters most to it, and
+      that the only control which caught the 2008 deterioration was calibration
+      monitoring, which is structurally 12 months late. That is a real
+      limitation of the monitoring design and is reported as such rather than
+      presented as a PSI chart that happens to stay green.
+      Note the interaction with the Phase 4 rubric, which awarded LightGBM a
+      stability score of 0.437 against the scorecard's 0.149 on the strength of
+      a lower out-of-time score PSI. That difference is real but, on this
+      evidence, measures how much each model's output distribution moved between
+      two populations rather than anything about reliability under regime
+      change. The dimension is not worthless - it still detects population
+      change and data-supply failure - but the weight it carries in the rubric
+      is not supported by what it turned out to detect here.
+
+  - id: F-016
+    title: >-
+      CSI against a pooled multi-year reference measures portfolio seasoning,
+      not drift, and fires on 91% of development-sample windows
+    severity: medium
+    phase_raised: 6
+    date_raised: 2026-09-12
+    status: open
+    owner: project_author
+
+    description: >-
+      Rule MON-02 (worst single-feature CSI above 0.25) fires on 29 of the 32
+      quarterly windows that sit inside the development sample, and breaches on
+      28 of them. MON-03 (any feature above the significant band) fires on 28 of
+      32. These are windows on which the model is, by construction, working: they
+      are the data its coefficients were fitted to.
+
+    evidence: >-
+      The worst offender is loan_age. At 1999Q1 its CSI is 12.40, with 10 of its
+      11 reference bins empty on the window side. The cause is arithmetic rather
+      than credit: loans observed in 1999Q1 have ages of 0 to 2 months, while
+      the pooled 1999-2006 reference has a mean age of 19.4 months and spans the
+      full range. A single quarter early in a growing book cannot overlap a
+      pooled multi-year age distribution, so almost every bin is empty on one
+      side and the reported CSI is carried by the 1e-6 epsilon floor registered
+      as PSI_002 rather than by data. The same mechanism drives
+      original_interest_rate, which is deterministic in origination vintage.
+      The epsilon-domination flag added in this phase identifies these windows
+      directly: `monitoring_csi_epsilon_dominated.csv` lists every window whose
+      headline CSI comes from a feature with more than half its bins empty.
+
+    impact: >-
+      Two effects, and the second is worse than the first. The immediate one is
+      that the reported numbers are not measurements - a CSI of 12.4 is a
+      statement about a floor constant. The structural one is alert fatigue: a
+      rule that fires on nine of every ten windows where nothing is wrong is not
+      a control, and the predictable human response is to stop reading it, which
+      is how real monitoring functions go blind to the alerts that do matter.
+      This also contaminates the detection-gap headline. MON-02 is the rule that
+      "first breached" in 2007Q1, twelve months before the lagging indicators
+      could. Crediting it with twelve months of warning would be false: it also
+      breached in 1999, 2000, 2001 and almost every quarter since, so it did not
+      detect 2007, it was simply already on when 2007 arrived.
+
+    remediation: >-
+      Separate the features by what CSI can say about them.
+      Origination characteristics - credit score, LTV, DTI, purpose, channel -
+      are fixed per loan, so a shift in their distribution is a genuine change in
+      the population being scored and CSI is the right instrument.
+      Time-structural features - loan_age, and origination vintage proxies such
+      as original_interest_rate - move deterministically with the calendar for
+      any fixed book, so a pooled reference is not a valid comparator. These
+      belong in a portfolio-composition exhibit reporting the age and vintage mix
+      directly, not in a drift rule.
+      The alternative, conditioning the CSI on age band, is available but does
+      not help here: it would report drift within age bands, which is a different
+      and narrower question than the rule is asked to answer.
+
+    residual_risk: >-
+      Medium pending the split. The rule and its thresholds are deliberately left
+      as committed, and the measured false-positive rate is reported instead of
+      being tuned away. Tuning a threshold until the in-sample rate looked
+      acceptable would be fitting the control to the data it is supposed to
+      police, which is the same error as choosing selection weights after seeing
+      the winner. The false-positive table is the evidence that the re-scoping
+      above is needed, and it has to survive in the record.
+
+  - id: F-017
+    title: >-
+      A relative threshold on the Brier reliability term is unusable because the
+      development-sample baseline is near zero
+    severity: low
+    phase_raised: 6
+    date_raised: 2026-09-12
+    status: open
+    owner: project_author
+
+    description: >-
+      Rule MON-06 warns at a 100% increase and breaches at a 400% increase in the
+      Brier reliability component relative to the development sample. It fires on
+      23 of the 30 evaluable in-sample windows and breaches on 10 of them, a 77%
+      false-positive rate.
+
+    evidence: >-
+      The reliability term on the pooled development sample is 4.6e-6. Individual
+      in-sample quarters range from 3.1e-7 to 1.2e-5. A quarterly window holding
+      a few hundred defaults produces a reliability term several times the pooled
+      value through sampling variation alone, so a 400% relative threshold is
+      crossed routinely by a well-calibrated model. The threshold is not wrong
+      about the direction; it was set without characterising the in-sample
+      variance of the quantity it constrains.
+
+    impact: >-
+      Low in itself: MON-06 carries the lowest severities in the rulebook and
+      nothing in the reported ECL depends on it. It matters as a worked example
+      of a general error - a relative threshold on a quantity whose baseline is
+      near zero has no stable meaning, because the denominator is dominated by
+      noise. The same trap would apply to any ratio-based control placed on a
+      well-behaved residual.
+
+    remediation: >-
+      Replace the relative threshold with one expressed in the units the metric
+      is actually read in. Two defensible options: an absolute floor set from the
+      observed in-sample quarterly distribution, for example the 95th percentile
+      of in-sample window values, or a two-sided binomial test on the observed
+      versus expected default count per reliability bin, which carries its own
+      sampling distribution and does not need a threshold picked by hand.
+      Whichever is chosen must be committed before the rerun, and the current
+      thresholds stay in the register as what was tried.
+
+    residual_risk: >-
+      Low. The signal MON-06 is meant to carry - miscalibration separated from
+      the base-rate movement that swamps the headline Brier score - is real and
+      is visible in the timeline: the reliability term rises from 2e-6 in 2006 to
+      1.1e-3 by 2008Q4, a factor of five hundred. The finding is about the
+      threshold, not the metric.
+
+  - id: F-018
+    title: >-
+      The model selected by the Phase 4 rubric has no scoring-ready artefact, so
+      every downstream figure comes from the model that lost
+    severity: high
+    phase_raised: 6
+    date_raised: 2026-09-12
+    status: remediated
+    owner: project_author
+
+    description: >-
+      The Phase 4 comparison selects LightGBM at a weighted 0.4035 against the
+      scorecard's 0.3648, and `models/selection_record.json` records that
+      conclusion. No bundle is persisted for it. `models/` contains exactly one
+      loadable artefact, `scorecard_bundle`, whose manifest declares
+      RISKOS_PD_001.
+
+    evidence: >-
+      Found by the Phase 6 inventory reconciliation rather than by inspection:
+      the `selected_model_not_deployable` check reads the selection record, looks
+      up the winning family in the inventory, and asserts a loadable artefact
+      exists for it. `riskos.models.train_challenger` writes the comparison
+      metrics, the reliability curves, the explanation comparison and the
+      selection record, but never calls `save_bundle`. The scorecard path does
+      call it, which is why one model is deployable and the other is not.
+
+    impact: >-
+      Everything built on top of the "champion" is built on the runner-up. The
+      Phase 6 monitoring run - 64 windows, 262 alerts, the detection-gap analysis
+      and finding F-015 - was executed against RISKOS_PD_001, the scorecard,
+      because that is the only model that can be loaded. The ECL engine takes its
+      PDs from the hazard model rather than either PD candidate, so the reported
+      provision is unaffected, but any statement that this project monitors its
+      selected champion is false as built.
+      The narrower governance point is the one that generalises: a selection
+      exercise whose conclusion never reaches an artefact has not selected
+      anything. The rubric, the weights committed in advance, and the memo all
+      describe a decision that was never implemented.
+
+    why_the_existing_tests_missed_it: >-
+      The Phase 4 tests assert the arithmetic of the rubric and the contents of
+      the selection record. Nothing asserted that the selected model could be
+      reloaded, because no test crossed from the selection record to the
+      artefacts on disk. This is the same shape as R-007 and R-013: a property
+      that holds inside the process and fails outside it.
+
+    remediation: >-
+      Give the challenger the same persistence path the scorecard has. The
+      bundle format is already generic - `save_bundle` takes an arbitrary
+      component mapping and writes a manifest - so the change is a `save_bundle`
+      call carrying the fitted booster, the feature list, the fitted calibrator
+      and a SHAP background sample, plus a `from_bundle` that reloads them.
+      Then re-run monitoring against the selected model and report both, because
+      the comparison between how the two models behave under the same rulebook
+      is worth more than replacing one timeline with the other.
+
+    residual_risk: >-
+      REMEDIATED 2026-09-12. `Challenger.save_bundle` and `Challenger.from_bundle`
+      were added, `riskos challenger` now writes `models/challenger_bundle`, and
+      Phase 6 monitoring runs BOTH PD models over the identical windows under the
+      identical rulebook rather than replacing one timeline with the other. The
+      comparison is what justified the extra work: it is the evidence that F-015
+      is a property of PSI rather than of the scorecard.
+      The reconciliation check that found this runs on every `riskos registry`
+      invocation and fails the same way for any future model whose selection
+      outruns its persistence.
+      Residual risk is low but not zero: RISKOS_PD_002 remains `candidate` and
+      `not_approved`, because an artefact existing is not the same as a model
+      being validated and approved, and nothing in this project has performed the
+      independent validation its tier 1 rating would require.
+
+      One hypothesis raised while fixing this was investigated and REJECTED, and
+      is recorded because a rejected hypothesis is evidence too. The challenger's
+      categorical features were encoded per batch by `to_frame`, and the in-time
+      validation split really is missing a level that training has - 65 Virgin
+      Islands rows, shifting the pandas category code of 5.6% of that split's
+      rows by one. That looked like the same batch-dependence defect as R-003 and
+      R-005. It is not: LightGBM stores the fitted level names on the booster and
+      re-aligns an incoming frame by name before predicting, and SHAP's
+      TreeExplainer inherits the same path. Both were tested directly on a frame
+      with a level deliberately removed and produced identical predictions and
+      identical SHAP values, and every Phase 4 metric is bit-identical before and
+      after the encoding was made explicit. The fitted mapping is still carried in
+      the bundle, for a serving reason rather than a correctness one: a scoring
+      request arriving as JSON has no categorical dtype at all, and the model
+      should not depend on a dependency's internals to supply one.
+
+  - id: F-019
+    title: >-
+      The macro overlay is fitted on 24 quarters, not the 32 the register, the
+      scenario config and the module docstring all assert
+    severity: medium
+    phase_raised: 6
+    date_raised: 2026-09-13
+    status: remediated
+    owner: project_author
+
+    description: >-
+      MACRO_001 recorded `n_observations: 32` on a primary window of
+      1999Q1-2006Q4. `conf/scenarios.yaml` and the `riskos.ecl.macro` docstring
+      repeated the figure. `reports/figures/macro_coefficients.csv`, written by
+      the fit itself, records 24 observations for that window, and the
+      full-history fit records 56 rather than 64.
+
+    evidence: >-
+      `macro.quarterly_series` differences the Case-Shiller 20-city index
+      (SPCS20RSA) at four quarters to obtain year-on-year house-price change,
+      then drops rows where that is null. The series begins in January 2000, so
+      the first quarter with a defined year-on-year change is 2001Q1. The
+      default-rate series runs from 1999Q1 with no zero quarters, and
+      unemployment is available from 1948, so the truncation is entirely the
+      house-price term. Re-running `quarterly_series` and filtering to 2006
+      returns quarters 2001Q1 through 2006Q4, 24 rows. Found while writing the
+      Phase 5 guide chapter, when the CSV and the register disagreed.
+
+    impact: >-
+      No reported figure changes: every coefficient, interval, scenario shift
+      and backtest ratio was always computed on the 24 quarters. What was wrong
+      is the description of the evidence behind them, in three places, and in
+      the direction that overstates it. Identification is thinner than claimed
+      - two covariates and four HAC lags on 24 points rather than 32 - so the
+      already-wide intervals in F-009 rest on less than the register said. The
+      register's own rationale, that the 1999 panel start exists to give the
+      regression enough pre-crisis observations, is untrue for the house-price
+      term: the first two years of the panel never reach it. This is the same
+      defect class as R-011, a register describing something other than what
+      runs, and it was invisible to the assumption tests because they compare
+      the register against constants in code, and `n_observations` is not a
+      constant in code; it is an outcome of the data.
+
+    remediation: >-
+      MACRO_001 now records the effective window, the observation count the fit
+      produces, and the series start that causes the gap, with the original
+      claim retained as a dated correction. The scenario config comments and
+      the module docstring are corrected. Two tests are added: one that the
+      register's observation count equals the number of quarters in its own
+      effective window, which needs no data, and one that the count in
+      `macro_coefficients.csv` matches the register, which runs when the
+      artefact is present. The Phase 5 chapter states the effective window.
+
+    residual_risk: >-
+      Low for the figures, since none moved. The general lesson is the one
+      worth keeping: a register value that describes a data outcome rather than
+      a code constant can only be kept honest by a test that reads the
+      artefact, and the assumption tests as written only read the code.

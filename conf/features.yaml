@@ -1,0 +1,260 @@
+# Feature allow-list and leakage control (build plan §7.3).
+#
+# THE RULE: at observation date t, a feature may use only information available
+# at or before t.
+#
+# This file is the executable form of that rule. The panel builder raises on any
+# column not on the allow-list, and `tests/test_leakage.py` asserts the forbidden
+# set has an empty intersection with both the 12-month panel and the hazard
+# risk-set matrix. A convention enforced only by code review is not enforced.
+
+observation_features:
+  # Known at origination, therefore known at every later observation date.
+  origination:
+    - credit_score
+    - first_time_homebuyer_flag
+    - msa                        # 25% null: not in an MSA. Missing is informative.
+    - mi_percentage
+    - number_of_units
+    - occupancy_status
+    - original_cltv
+    - original_dti               # 8% null; binning gives missing its own bin
+    - original_upb
+    - original_ltv
+    - original_interest_rate
+    - channel
+    - prepayment_penalty_flag
+    - amortization_type
+    - property_state
+    - property_type
+    - postal_code
+    - loan_purpose
+    - original_loan_term
+    - number_of_borrowers
+    - super_conforming_flag
+    - harp_indicator
+    - interest_only_flag
+
+  # Loan state, taken AT the observation month and never after it.
+  loan_state:
+    - current_actual_upb
+    - current_loan_delinquency_status   # status AT t; the forward window defines the label
+    - loan_age
+    - remaining_months_to_legal_maturity
+    - current_interest_rate
+    - current_deferred_upb
+    - modification_flag                 # modified on or before t
+
+# Forbidden outright. Every one of these is measured at or after the credit
+# event, so its presence in a training matrix is direct target leakage: the
+# model would learn "this loan has a disposition expense, therefore it
+# defaulted".
+forbidden:
+  - zero_balance_code
+  - zero_balance_effective_date
+  - zero_balance_removal_upb
+  - termination_type              # derived from zero_balance_code
+  - actual_loss
+  - net_sales_proceeds
+  - mi_recoveries
+  - non_mi_recoveries
+  - total_expenses
+  - legal_costs
+  - maintenance_and_preservation_costs
+  - taxes_and_insurance
+  - miscellaneous_expenses
+  - delinquent_accrued_interest   # populated at default, postdates t
+  - ddlpi                         # due date of last paid installment; postdates t
+  - defect_settlement_date        # settlement of a defect determined after the fact
+  - bankruptcy_cramdown_costs     # only populated in the period of zero balance
+  - cumulative_modification_costs
+  - current_period_modification_costs
+  - estimated_ltv                 # see excluded_for_availability
+
+# Present in the panel by design, but never usable as model inputs. Kept
+# separate from `forbidden` because `forbidden` means "must not appear in the
+# matrix at all", which the leakage test asserts literally. These, by contrast,
+# must appear: you cannot train without a label or evaluate without a split.
+label_and_metadata:
+  - loan_sequence_number          # key, not a characteristic
+  - observation_date              # the point in time the row describes
+  - observation_year              # partition column
+  - split
+  - default_12m                   # the label
+  - prepaid_in_window             # competing-risk diagnostic
+  - default_in_forbearance        # COVID-forbearance diagnostic; describes the outcome window
+
+# Not leakage, but unusable. Recorded here so the exclusion is a documented
+# decision rather than an oversight, and so nobody "discovers" them later.
+excluded_for_availability:
+  - name: vantage_score
+    null_rate: 1.00
+    reason: >-
+      100% null across all 950,000 loans in the sample dataset. Not disclosed
+      for this vintage range.
+  - name: property_valuation_method
+    null_rate: 0.9922
+    reason: >-
+      Guide: only populated for loans originated on or after 1 January 2017.
+      Absent for the entire training and OOT-stress period.
+  - name: program_indicator
+    null_rate: 0.9840
+    reason: >-
+      Guide: disclosed for loans funded on or after 1 March 2015.
+  - name: estimated_ltv
+    reason: >-
+      Guide: only populated for April 2017 and following periods. Also listed
+      under `forbidden` because an ELTV taken from any period later than t
+      embeds future house-price movements, which is the §7.3 example of
+      leakage. Unusable on both counts.
+  - name: delinquency_due_to_disaster
+    reason: "Guide: only populated for January 2014 and following periods."
+  - name: borrower_assistance_status_code
+    reason: "Guide: only populated for January 2014 and following periods."
+  - name: mi_cancellation_flag
+    reason: "Guide: disclosed starting 2015."
+  - name: seller_name
+    reason: >-
+      High-cardinality identifier, and the disclosure threshold changes which
+      sellers are named by quarter, so its cardinality is itself a function of
+      calendar time.
+  - name: servicer_name
+    reason: "Same disclosure-threshold problem as seller_name."
+  - name: pre_harp_loan_sequence_number
+    reason: "Identifier, not a characteristic."
+  - name: first_payment_date
+    reason: >-
+      Raw origination dates encode calendar time directly. loan_age carries the
+      seasoning information without letting the model memorise the vintage.
+  - name: maturity_date
+    reason: "Same; remaining_months_to_legal_maturity carries the content."
+
+# ---------------------------------------------------------------------------
+# Phase 3 - binning and WOE (build plan §7.6).
+# ---------------------------------------------------------------------------
+binning:
+  # optbinning settings. Small bin counts keep the scorecard readable and each
+  # bin populated enough for a stable WOE.
+  max_n_bins: 6
+  min_n_bins: 2
+  min_bin_size: 0.02          # each bin holds >= 2% of the training rows
+  min_prebin_size: 0.005
+
+  # Information Value floor. Below this a feature carries too little signal to
+  # justify a place on a scorecard a human has to explain.
+  # Conventional reading: <0.02 unpredictive, 0.02-0.1 weak, 0.1-0.3 medium,
+  # 0.3-0.5 strong, >0.5 suspiciously strong (check for leakage).
+  iv_floor: 0.02
+
+  # Above this IV, a feature is REJECTED unless it appears in iv_cleared below
+  # with written evidence. An extremely strong single predictor is usually
+  # leakage, so the default answer is exclusion.
+  #
+  # The threshold is deliberately NOT raised each time something trips it.
+  # Raising it until nothing fires converts a control into decoration. It stays
+  # where it catches things, and each catch is investigated and recorded
+  # individually.
+  iv_leakage_ceiling: 0.9
+
+  iv_cleared:
+    - feature: credit_score
+      iv: 1.1543
+      verdict: genuine_not_leakage
+      evidence: >-
+        Default rate by band on the training split: <620 3.137%, 620-659 2.035%,
+        660-699 0.909%, 700-739 0.415%, 740-779 0.158%, 780+ 0.092%. A 34x
+        spread from worst to best band, monotone throughout, on 2.0M rows. A
+        FICO score is constructed to rank-order default propensity, so an IV
+        above 1 on a prime mortgage book is expected rather than anomalous. No
+        forbidden field contributes to it: credit_score is an origination
+        attribute fixed before the observation date.
+
+    - feature: current_loan_delinquency_status
+      iv: 1.6840
+      verdict: genuine_not_leakage_but_dominant
+      evidence: >-
+        Bins as ['00'] against ['01','02'] with event rates of 0.396% and
+        21.406%. This is contemporaneous information, known at the observation
+        date and not after it: panel eligibility already excludes loans at 90+
+        DPD, so these are loans 30-89 days late that have not yet defaulted.
+        No forward information is used.
+      caveat: >-
+        Legitimate but mechanically close to the target. A loan at 60-89 DPD
+        needs only one further month of non-payment to meet the 90+ DPD
+        definition, so this feature captures short-horizon payment momentum
+        rather than underlying credit quality, and will dominate any model that
+        includes it. It is retained because a 12-month IFRS 9 PD model is
+        expected to use delinquency at the reporting date - the standard's own
+        30-DPD Stage 2 backstop is exactly this information - but see finding
+        F-004: the scorecard must also be fitted and reported WITHOUT it, so the
+        contribution of origination credit quality is visible separately.
+
+  # Pearson correlation ceiling on the WOE-transformed matrix. Above this, the
+  # lower-IV member of the pair is dropped.
+  #
+  # This matters more for a scorecard than for a GBM. Collinear inputs inflate
+  # coefficient standard errors and make individual points unstable, which
+  # destroys the one thing a scorecard is for: a defensible per-feature
+  # contribution that an adjudicator can read.
+  max_correlation: 0.95
+
+  # Per-feature minimum bin size, overriding the global 2%.
+  min_bin_size_overrides:
+    current_loan_delinquency_status: 0.0005
+  min_bin_size_override_rationale:
+    current_loan_delinquency_status: >-
+      Delinquency status at the observation date is the strongest single
+      predictor in the dataset - status 01 (30-59 DPD) carries a 16.20% default
+      rate and status 02 (60-89 DPD) a 57.47% rate, against 0.40% for current
+      loans - but those two levels are only 1.10% and 0.16% of rows. The global
+      2% minimum collapsed all three levels into a single bin and reported an IV
+      of 0.0000, discarding the feature entirely. The 2% rule is a heuristic for
+      thin tails of continuous features; here the levels are a small ordered
+      categorical with 22,521 and 3,252 training observations respectively,
+      which is ample for a stable WOE. Lowered to 0.05%.
+
+  # Dropped after fitting because they duplicate another feature. Recorded here
+  # rather than silently removed from the allow-list, so the reason survives.
+  known_duplicates:
+    - drop: current_interest_rate
+      keep: original_interest_rate
+      evidence: >-
+        Identical on 100.00% of training rows (correlation 0.999976). The book
+        is fixed-rate and effectively unmodified over the training window, so
+        the current rate is the origination rate. Keeping both would split one
+        effect across two coefficients arbitrarily.
+
+  # High-cardinality identifiers. Excluded from binning rather than allowed to
+  # produce a bin per level: postal_code and msa have thousands of levels, and a
+  # scorecard with a thousand-row lookup table is not explainable to anyone.
+  exclude_high_cardinality: [postal_code, msa]
+
+  # Monotonic constraints where the economics are known, per build plan §7.6:
+  # "higher LTV must not produce lower risk". Direction is on the DEFAULT RATE.
+  # Anything not listed is fitted unconstrained ("auto") - imposing a direction
+  # we cannot defend is worse than letting the data speak.
+  monotonic_trend:
+    credit_score: descending          # higher score, lower default rate
+    original_ltv: ascending           # higher leverage, higher default rate
+    original_cltv: ascending          # includes secondary financing
+    original_dti: ascending           # higher debt burden, higher default rate
+    original_interest_rate: ascending # priced-up loans are riskier borrowers
+    current_interest_rate: ascending
+
+  monotonic_trend_rationale:
+    credit_score: >-
+      A credit score is a direct rank-ordering of borrower default propensity by
+      construction. A non-monotone fitted bin would be an artefact of sampling
+      noise in a thin bin, not a real reversal.
+    original_ltv: >-
+      Equity is the borrower's incentive to keep paying and the lender's
+      recovery buffer. Less equity cannot mean less risk.
+    original_cltv: "Same as original_ltv, including secondary financing."
+    original_dti: >-
+      A higher share of income committed to debt service leaves less capacity to
+      absorb an income or expense shock.
+    original_interest_rate: >-
+      Risk-based pricing: the rate is partly a function of what the originator
+      already knew about the borrower's risk at origination.
+    current_interest_rate: "Same, carried into the current period."
+

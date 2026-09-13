@@ -1,0 +1,3 @@
+check,model_id,severity,detail,remediation
+tier_one_unmonitored,RISKOS_HAZ_001,medium,RISKOS_HAZ_001 is tier 1 and in_use but no monitoring rule is pointed at it,"Add rules to conf/monitoring.yaml covering it, or record in the approval conditions why its tier does not require them. The gap is reported rather than left implicit either way."
+tier_one_unmonitored,RISKOS_LGD_001,medium,RISKOS_LGD_001 is tier 1 and in_use but no monitoring rule is pointed at it,"Add rules to conf/monitoring.yaml covering it, or record in the approval conditions why its tier does not require them. The gap is reported rather than left implicit either way."

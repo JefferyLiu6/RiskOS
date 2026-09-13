@@ -1,0 +1,132 @@
+# Phase 2 — observation panel, risk set, default definition, splits.
+#
+# The default definition is LOCKED before any model results are seen. Locking the
+# target before looking at performance is itself a governance behaviour (§7.1).
+# Do not revise this block after seeing model output.
+
+default_definition:
+  statement: >-
+    A loan is in default if it is 90 or more days past due, or if it terminates
+    via a credit event: third-party sale, short sale, REO disposition, note sale,
+    or charge-off.
+  dpd_threshold_days: 90
+
+  # Delinquency leg. The Guide's current_loan_delinquency_status is a STRING,
+  # not a number: it counts months delinquent ("00" current, "01" 30-59d,
+  # "02" 60-89d, "03" 90-119d, capped at "99"), plus "RA" for REO Acquisition
+  # and "XX" for Not Available. 90+ DPD therefore means a numeric value >= 3,
+  # or "RA". "XX" is null and must not be silently treated as current.
+  dpd_status_column: current_loan_delinquency_status
+  dpd_min_months: 3
+  dpd_also_default_statuses: ["RA"]
+  dpd_unknown_statuses: ["XX"]
+
+  # Termination leg, using the enum names transcribed from the User Guide,
+  # Release 47. The Guide combines short sale and charge-off into one code (03),
+  # so they cannot be separated and are one member here.
+  credit_event_terminations:
+    - third_party_sale                 # code 02
+    - short_sale_or_charge_off         # code 03
+    - reo_disposition                  # code 09
+    - whole_loan_sale                  # code 15 - see whole_loan_sale_note
+  not_default:
+    - prepaid_or_matured               # code 01, voluntary payoff or maturity
+    - reperforming_loan_securitization # code 16, a funding event, not a credit event
+  excluded_not_counted_as_good:
+    # Build plan §7.1: repurchase due to defect is not a default. Flag and
+    # exclude these loans; do not count them as good.
+    - defect_prior_to_credit_event     # code 96
+
+  whole_loan_sale_note: >-
+    Build plan §7.1 lists "note sale" as a credit event. Release 47 labels the
+    corresponding code (15) "Whole Loan sales", so this mapping is a judgement,
+    not a transcription. Materiality is expected to be low: code 15 first appears
+    in the data in 2014 and totals roughly 1,200 terminations across all
+    vintages, and Freddie Mac's whole-loan sales are predominantly seriously
+    delinquent loans that the 90+ DPD leg already captures. Phase 2 must
+    quantify the incremental defaults attributable to code 15 alone and record
+    the figure in the assumptions register.
+
+  locked: true
+  locked_note: >-
+    Reconstructed from build plan §3 because §7.1 was truncated in the source
+    document, then reconciled against the User Guide, Release 47, once the data
+    arrived. Enum names now match the Guide verbatim. Not to be revised after
+    model results are seen.
+
+panel:
+  design: observation_cohort
+  observation_frequency: quarter_end
+  observation_start: 1999-Q1
+  observation_end: 2019-Q4
+  horizon_months: 12
+  eligible_population:
+    - loan active at observation date
+    - not already 90+ DPD at observation date
+    - not already terminated at observation date
+  label: >-
+    1 if the loan enters default within the 12 months following the observation
+    date, else 0. Loans prepaying inside the window are labelled 0 and flagged.
+    Loans with insufficient forward observation are dropped, never imputed.
+  drop_insufficient_forward_window: true
+  partition_by: observation_year
+
+sampling:
+  stratify_by: observation_date   # preserve cohort proportions
+  target_rows_min: 2_000_000
+  target_rows_max: 5_000_000
+  rate: null                      # set once total eligible loan-months are known
+  seed: 20250901
+
+risk_set:
+  # Monthly risk set for the discrete-time hazard model (§7.8): one row per
+  # loan-month while the loan is alive.
+  #
+  # `other_exit` is code 16, reperforming loan securitization: the loan leaves
+  # the dataset without either defaulting or being voluntarily paid off. It is
+  # censoring, not an event, and folding it into `prepaid` would misattribute it
+  # to the prepayment hazard in the competing-risks model.
+  frequency: monthly
+  outcome_enum: [alive, default, prepaid, other_exit]
+  partition_by: observation_year
+
+splits:
+  # Out-of-time, never random (§7.4).
+  train:
+    observation_dates: [1999-Q1, 2006-Q4]
+    purpose: fitting
+  validation_in_time:
+    observation_dates: [1999-Q1, 2006-Q4]
+    loans: held_out           # disjoint loan_sequence_number from train
+    purpose: tuning and threshold selection
+  oot_stress:
+    observation_dates: [2007-Q1, 2009-Q4]
+    purpose: performance under regime change
+  oot_benign:
+    observation_dates: [2015-Q1, 2019-Q4]
+    purpose: stability in a different regime
+  no_loan_overlap_across: [train, validation_in_time, oot_stress, oot_benign]
+
+  # Loans are allocated to exactly one split by a seeded hash of the loan
+  # sequence number, then contribute only those observation dates that fall in
+  # their split's window. This makes the four splits loan-disjoint by
+  # construction, which is the Phase 2 acceptance criterion.
+  #
+  # It has a real cost, recorded rather than hidden: a loan allocated to
+  # oot_stress contributes only its 2007-2009 observations, and its 1999-2006
+  # observations are discarded. The alternative — letting the same loan appear
+  # in train and in an out-of-time split — leaks loan-level information across
+  # the boundary and makes OOT performance look better than it is.
+  loan_allocation:
+    seed: 20250901
+    fractions:
+      train: 0.60
+      validation_in_time: 0.15
+      oot_stress: 0.125
+      oot_benign: 0.125
+
+  # 2010-2014 observation dates belong to no split by design (build plan §7.4
+  # defines four windows and leaves this gap). Rows there are built and counted
+  # but marked `unassigned`, so the gap is visible in the exclusions report
+  # rather than silently absent.
+  unassigned_window_note: "2010-Q1 through 2014-Q4 is not part of any split"

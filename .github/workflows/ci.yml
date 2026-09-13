@@ -1,0 +1,44 @@
+# Lint, type-check, and test on every push and pull request.
+#
+# The loan-level data is licensed and never committed, so every test that needs
+# the built panel or a fitted bundle is marked `needs_data` and skips here. What
+# CI does enforce is everything that can be checked without data: the
+# assumptions register matching the constants in code, the monitoring rulebook
+# matching the register, the inventory schema, the metric implementations
+# against hand-computed values, and the leakage assertions on fixture data.
+
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+
+      - name: Type-check
+        run: uv run mypy
+
+      - name: Test
+        run: uv run pytest -p no:warnings

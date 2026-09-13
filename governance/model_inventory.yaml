@@ -1,0 +1,211 @@
+# Model inventory (OSFI E-23, model identification and inventory).
+#
+# An inventory that is not reconciled against what is actually on disk is a
+# spreadsheet. `uv run riskos registry` reads this file, reads the artefacts in
+# models/, reads the findings register, and reports every place the three
+# disagree — a model recorded here with no deployable artefact, an artefact with
+# no inventory entry, a bundle built against configuration that has since
+# changed, an open high-severity finding absent from a model's recorded
+# limitations, or an approval past its review date.
+#
+# This file holds the JUDGEMENTS: what each model is for, who owns it, what tier
+# it carries, what it must not be used for. Everything derivable from an
+# artefact — feature list, training window, row counts, config fingerprints — is
+# read from the artefact at reconciliation time and is deliberately NOT copied
+# here, because a copied fact is a fact that can go stale silently.
+
+schema:
+  required_fields:
+    [id, name, purpose, family, status, owner, tier, intended_use,
+     prohibited_use, artefact, approval, limitations]
+  statuses: [development, candidate, approved, in_use, retired]
+  tiers: [1, 2, 3]
+
+# How tier is derived. Committed as a rubric rather than asserted per model, so
+# a tier cannot be talked down without changing a rule that applies to every
+# model at once.
+tiering_rubric:
+  dimensions:
+    financial_materiality: >-
+      Does an error in this model change a reported financial figure? A PD model
+      feeding ECL does, because ECL is PD x LGD x EAD and lands in the provision.
+    decision_autonomy: >-
+      Does the output act on a customer without a human in the loop? An
+      automated adjudication carries conduct risk a decision-support score does
+      not.
+    methodological_complexity: >-
+      Can the mechanism be explained exactly, or only approximated? A scorecard's
+      points decomposition reproduces its own output; a gradient-boosted
+      ensemble is explained by attribution to a baseline.
+
+  mapping:
+    tier_1: >-
+      Material to a reported financial figure OR acts autonomously on customers.
+      Requires independent validation before approval, ongoing monitoring
+      against committed thresholds, and annual review.
+    tier_2: >-
+      Feeds a material figure indirectly, or supports a decision a human makes.
+      Requires documented developer validation, ongoing monitoring, and
+      review every two years.
+    tier_3: >-
+      Exploratory or internal-analysis only, with no path to a reported figure
+      or a customer decision. Documented, inventoried, and not monitored.
+
+  # This project's tiering is deliberately conservative: everything that feeds
+  # the ECL calculation is tier 1, because the ECL number is the one a reader
+  # would be tempted to quote.
+
+models:
+  - id: RISKOS_PD_001
+    name: 12-month PD scorecard (WOE logistic)
+    purpose: >-
+      Twelve-month probability of default for a seasoned residential mortgage,
+      used as the stage-1 input to the IFRS 9 ECL calculation and as the
+      champion candidate in the Phase 4 comparison.
+    family: woe_scorecard
+    status: in_use
+    owner: project_author
+    tier: 1
+    tier_rationale: >-
+      Feeds ECL directly, which is a reported financial figure. Not autonomous —
+      nothing in this project acts on a customer — but materiality alone is
+      sufficient for tier 1 under the rubric above.
+
+    intended_use: >-
+      Illustrative and educational. Ranking and level estimation of 12-month
+      default risk on U.S. conforming residential mortgages originated 1999-2006,
+      observed at a point in their life.
+    prohibited_use: >-
+      Not for real lending or underwriting decisions, not for regulatory capital
+      or provisioning, and not applicable to any Canadian portfolio without
+      redevelopment on Canadian data. Not valid outside the origination vintages
+      and product type it was fitted on, and per F-005 not reliable for level
+      estimation under regime change at all.
+
+    artefact: models/scorecard_bundle
+    monitored_by: [MON-01, MON-02, MON-03, MON-04, MON-05, MON-06]
+
+    approval:
+      status: approved_with_conditions
+      approved_on: 2026-08-31
+      approved_by: project_author
+      review_due: 2027-08-31
+      conditions: >-
+        Approved for illustrative use only, on the explicit condition that the
+        calibration failure recorded as F-005 is stated wherever an output is
+        reported. A developer validation with a simulated second-line review is
+        not independent validation, and tier 1 would ordinarily require the
+        latter; that gap is a limitation of this review, recorded here rather
+        than waived.
+
+    limitations: [F-004, F-005, F-015, F-018]
+
+  - id: RISKOS_PD_002
+    name: 12-month PD challenger (LightGBM)
+    purpose: >-
+      Gradient-boosted challenger to RISKOS_PD_001, selected by the Phase 4
+      rubric at 0.4035 against 0.3648.
+    family: lightgbm
+    status: candidate
+    owner: project_author
+    tier: 1
+    tier_rationale: >-
+      Same use and same materiality as RISKOS_PD_001. Tier does not fall because
+      a model is a challenger; a challenger selected by the rubric is a model
+      awaiting deployment, not an experiment.
+
+    intended_use: >-
+      As RISKOS_PD_001. Selected on the pre-committed rubric but not deployed.
+    prohibited_use: >-
+      As RISKOS_PD_001, and additionally not to be reported as the model behind
+      any published figure until a scoring-ready artefact exists and has been
+      monitored. See F-018.
+
+    artefact: models/challenger_bundle
+    monitored_by: [MON-01, MON-02, MON-03, MON-04, MON-05, MON-06]
+
+    approval:
+      status: not_approved
+      approved_on: null
+      approved_by: null
+      review_due: null
+      conditions: >-
+        An artefact now exists (F-018 remediated) and the model is monitored on
+        the same rulebook as RISKOS_PD_001, but it remains not approved. A model
+        that can be loaded is not thereby validated, and nothing in this project
+        has performed the independent validation a tier 1 rating would require.
+        Approval would also have to address F-006: the rubric's own calibration
+        dimension scores this model 0.062 out of 1.0.
+
+    limitations: [F-006, F-007, F-018]
+
+  - id: RISKOS_HAZ_001
+    name: Discrete-time hazard with competing risks
+    purpose: >-
+      Monthly default and prepayment hazards, used to build the lifetime PD term
+      structure the IFRS 9 stage-2 measurement and the SICR test require.
+    family: cloglog_discrete_hazard
+    status: in_use
+    owner: project_author
+    tier: 1
+    tier_rationale: >-
+      Lifetime PD is the stage-2 ECL input and drives the staging test itself,
+      so an error moves both the provision and which loans sit in which stage.
+
+    intended_use: >-
+      Lifetime default projection over a loan's remaining term, and the
+      origination-vintage comparator used by the SICR test.
+    prohibited_use: >-
+      Not to be projected beyond the fitted age range without stating the
+      extrapolation. Per F-014 the lifetime projection lacks a transition model,
+      so a loan's path between delinquency states is not modelled.
+
+    artefact: models/hazard_fit.json
+    monitored_by: []
+
+    approval:
+      status: approved_with_conditions
+      approved_on: 2026-09-08
+      approved_by: project_author
+      review_due: 2027-09-08
+      conditions: >-
+        Approved for illustrative use with F-008 and F-014 stated alongside any
+        lifetime figure. NOT currently monitored: no rule in
+        conf/monitoring.yaml applies to it, which is a gap against its tier and
+        is reported by reconciliation rather than left implicit.
+
+    limitations: [F-008, F-011, F-014]
+
+  - id: RISKOS_LGD_001
+    name: Segment LGD with shrinkage
+    purpose: >-
+      Loss given default by LTV band and state, shrunk toward the portfolio mean,
+      supplying the LGD term of the ECL calculation.
+    family: segment_mean_shrunk
+    status: in_use
+    owner: project_author
+    tier: 1
+    tier_rationale: >-
+      Multiplies directly into ECL. A segment LGD that is wrong by 10 points
+      moves the provision by the same proportion as a PD error of the same size.
+
+    intended_use: >-
+      Portfolio-level and segment-level LGD for the ECL engine.
+    prohibited_use: >-
+      Not a loan-level loss forecast. Segment means with shrinkage describe a
+      group, and applying one to an individual property overstates what the
+      estimate supports.
+
+    artefact: reports/figures/lgd_segments.csv
+    monitored_by: []
+
+    approval:
+      status: approved_with_conditions
+      approved_on: 2026-09-08
+      approved_by: project_author
+      review_due: 2027-09-08
+      conditions: >-
+        Approved with the denominator and bounding sensitivities reported
+        alongside any LGD figure. Not monitored, same gap as RISKOS_HAZ_001.
+
+    limitations: []

@@ -1,0 +1,28 @@
+name,iv,band,n_bins,selected,reason
+current_loan_delinquency_status,1.6840121477748569,suspiciously_strong,2,true,IV 1.6840 above ceiling; cleared on documented evidence
+credit_score,1.1543288735629367,suspiciously_strong,6,true,IV 1.1543 above ceiling; cleared on documented evidence
+original_interest_rate,0.42539820176045734,strong,6,true,selected
+original_ltv,0.4244581846966628,strong,6,true,selected
+original_cltv,0.37470991886455063,strong,6,true,selected
+mi_percentage,0.3149137517907128,strong,5,true,selected
+original_loan_term,0.21271206640845283,medium,4,true,selected
+remaining_months_to_legal_maturity,0.21036373935101385,medium,4,true,selected
+number_of_borrowers,0.17658019147493048,medium,2,true,selected
+property_state,0.164345543740483,medium,6,true,selected
+original_dti,0.1273530615311647,medium,6,true,selected
+loan_age,0.07524570439589946,weak,6,true,selected
+channel,0.07375462051197781,weak,2,true,selected
+original_upb,0.05311170059031142,weak,6,true,selected
+current_actual_upb,0.03547816939402875,weak,6,true,selected
+property_type,0.024454067756083553,weak,3,true,selected
+first_time_homebuyer_flag,0.023680451993060885,weak,2,true,selected
+loan_purpose,0.020048663534037413,weak,3,true,selected
+occupancy_status,0.013637138946494752,unpredictive,3,false,IV 0.0136 below floor 0.02
+modification_flag,0.0009125936821764774,unpredictive,1,false,IV 0.0009 below floor 0.02
+number_of_units,0.0008578988489002712,unpredictive,2,false,IV 0.0009 below floor 0.02
+prepayment_penalty_flag,0.0,unpredictive,1,false,IV 0.0000 below floor 0.02
+amortization_type,0.0,unpredictive,1,false,IV 0.0000 below floor 0.02
+super_conforming_flag,0.0,unpredictive,1,false,IV 0.0000 below floor 0.02
+harp_indicator,0.0,unpredictive,1,false,IV 0.0000 below floor 0.02
+interest_only_flag,0.0,unpredictive,1,false,IV 0.0000 below floor 0.02
+current_deferred_upb,0.0,unpredictive,1,false,IV 0.0000 below floor 0.02

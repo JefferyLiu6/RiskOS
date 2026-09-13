@@ -1,0 +1,693 @@
+# Assumptions register.
+#
+# Every numeric assumption in this project lives here, never hardcoded in a
+# module. Each entry must carry a source, which is one of:
+#   empirical  — estimated from the data, with the estimating script named
+#   convention — a cited industry or regulatory convention, with the citation
+#   judgement  — an explicitly labelled judgement call, with a sensitivity test
+#
+# An entry with no source is a defect. `tests/test_assumptions.py` enforces the
+# required fields. Populated progressively; fully populated by end of Phase 5.
+
+schema:
+  required_fields: [id, description, value, source, rationale, materiality, sensitivity_test]
+  allowed_sources: [empirical, convention, judgement]
+
+assumptions:
+  - id: PSI_001
+    description: PSI/CSI stability bands
+    value:
+      moderate: 0.10
+      significant: 0.25
+    source: convention
+    rationale: >-
+      Long-standing industry reading of the population stability index: below
+      0.10 stable, 0.10-0.25 moderate shift warranting investigation, above 0.25
+      significant shift. Widely used in scorecard monitoring and adopted here
+      per build plan §7.5. These are reporting bands, not statistical tests, and
+      carry no distributional guarantee.
+    materiality: >-
+      Medium. Drives monitoring alert severity, not any reported financial
+      figure. A misplaced band changes when a human looks, not what ECL is.
+    sensitivity_test: >-
+      Monitoring timeline (Phase 6) reports raw PSI alongside the band, so the
+      2008 degradation can be read independently of where the cut-offs sit.
+    used_by: [riskos.metrics.stability]
+
+  - id: PSI_002
+    description: Epsilon substituted for an empty PSI/CSI bin
+    value: 1.0e-6
+    source: judgement
+    rationale: >-
+      The log ratio is undefined when a bin is empty on either side. A floor is
+      required to return a number at all. 1e-6 sits well below the smallest
+      share a 10-bin decile split can produce on a panel of the target size, so
+      it only ever binds on genuinely empty bins. Every substitution is logged
+      (build plan §7.5) because an epsilon-floored bin can dominate the total,
+      and a PSI driven by the floor is an artefact, not evidence of drift.
+    materiality: >-
+      Low in normal operation, high in the specific case of an empty bin, where
+      the reported PSI is essentially a function of this constant. The
+      `empty_bins` and `floored` fields on the result exist to make that
+      visible rather than inferable.
+    sensitivity_test: >-
+      PSIResult.detail reports per-bin contributions and a `floored` flag, so
+      any epsilon-driven total can be identified and re-read without it.
+    used_by: [riskos.metrics.stability]
+
+  - id: PSI_003
+    description: Number of PSI bins, taken from training-set score deciles
+    value: 10
+    source: convention
+    rationale: >-
+      Build plan §7.5 specifies ten bins from training-set score deciles. Bins
+      are fixed by the reference sample and never re-derived from the window
+      under test, otherwise both sides are uniform by construction and PSI
+      collapses toward zero.
+    materiality: >-
+      Medium. PSI is not scale-free in the bin count; values are comparable only
+      across runs using the same binning.
+    sensitivity_test: >-
+      `psi(..., n_bins=...)` is a parameter, so the monitoring timeline can be
+      re-run at a different resolution if tied scores collapse the deciles.
+    used_by: [riskos.metrics.stability]
+
+  - id: CAL_001
+    description: Confidence level for binomial intervals on the reliability curve
+    value: 0.95
+    source: convention
+    rationale: >-
+      Standard two-sided 95% level. Intervals use the Wilson score method rather
+      than the normal approximation: default rates are small and the safest
+      score bands hold few defaults, where the normal interval runs below zero
+      and understates uncertainty.
+    materiality: >-
+      Medium. Determines which reliability bins are flagged as miscalibrated,
+      and therefore how strongly the calibration finding is stated.
+    sensitivity_test: >-
+      `reliability_curve(..., confidence=...)` is a parameter; the curve reports
+      raw bin counts and observed rates so any level can be reconstructed.
+    used_by: [riskos.metrics.calibration]
+
+  - id: CAL_002
+    description: Number of bins for the reliability curve and Brier decomposition
+    value: 10
+    source: judgement
+    rationale: >-
+      Ten equal-count bins of predicted PD. Equal-count rather than equal-width
+      because predicted PDs are heavily right-skewed, and equal-width bins would
+      leave the upper bins nearly empty. The Murphy decomposition is exact only
+      for a discrete forecast, so binning a continuous PD introduces a residual.
+    materiality: >-
+      Medium. Too few bins understates reliability by averaging away local
+      miscalibration; too many produces noisy per-bin rates.
+    sensitivity_test: >-
+      BrierDecomposition.residual reports the gap between the directly computed
+      Brier score and the decomposition. A large residual means the binning is
+      too coarse to describe the forecast, and is reported rather than hidden.
+    used_by: [riskos.metrics.calibration]
+
+  - id: PANEL_001
+    description: Observation-cohort panel sampling target
+    value:
+      target_rows_min: 2000000
+      target_rows_max: 5000000
+      realised_rows: 3442585
+      realised_rate: 1.0
+    source: judgement
+    rationale: >-
+      Build plan §7.2 specifies a 2-5M loan-month target. The eligible,
+      observable, in-split population is 3,442,585 rows, which falls inside the
+      band, so no sampling was applied and the realised rate is 1.0. Sampling is
+      uniform in a seeded hash of (loan, observation date), which preserves each
+      observation date's share of the panel as `stratify_by: observation_date`
+      requires.
+    materiality: >-
+      Low as realised. Because no rows were dropped, no sampling variance enters
+      any downstream estimate. Would become material if a larger vintage set
+      pushed the population above the band.
+    sensitivity_test: >-
+      Not required while the rate is 1.0. If sampling activates, re-run at two
+      seeds and confirm the default rate by observation quarter is unchanged
+      within binomial error.
+    used_by: [riskos.panel.build]
+
+  - id: PANEL_002
+    description: Allocation of loans to splits
+    value:
+      seed: 20250901
+      train: 0.60
+      validation_in_time: 0.15
+      oot_stress: 0.125
+      oot_benign: 0.125
+    source: judgement
+    rationale: >-
+      Loans are allocated to exactly one split by a seeded hash, making the four
+      splits loan-disjoint as Phase 2 acceptance requires. The 60/15/12.5/12.5
+      weighting favours the training window, which spans eight years against
+      three and five for the out-of-time windows. Realised default rates:
+      train 0.660%, validation_in_time 0.676%, oot_stress 2.173%,
+      oot_benign 1.010%.
+    materiality: >-
+      Medium. Governs statistical power in the out-of-time splits, where
+      per-decile calibration bins are smallest. See finding F-003.
+    sensitivity_test: >-
+      train and validation_in_time share a period and disjoint loans, so their
+      default rates must agree; they differ by 1.6 basis points, which is
+      asserted in tests/test_panel.py.
+    used_by: [riskos.panel.build]
+
+  - id: PANEL_003
+    description: Treatment of COVID-19 forbearance in the default label
+    value:
+      action: flag_not_exclude
+      oot_benign_defaults_forbearance_driven: 0.549
+    source: judgement
+    rationale: >-
+      90+ DPD under CARES Act payment forbearance meets the locked default
+      definition without being an economic credit event. The definition is NOT
+      amended: §7.1 forbids revising the target after seeing results. Instead a
+      `default_in_forbearance` diagnostic is emitted from the borrower
+      assistance status in the month of first default, so the contamination can
+      be conditioned on downstream and quantified in the report.
+    materiality: >-
+      High for the oot_benign split, where 54.9% of defaults are
+      forbearance-driven: the measured default rate is 1.010% against 0.458%
+      excluding them. Zero for train and OOT-stress, which predate the
+      assistance field entirely. Figures restated after defect R-001.
+    sensitivity_test: >-
+      Every metric reported on oot_benign must appear twice: as-is, and
+      excluding forbearance-driven defaults. Tracked as finding F-001.
+    used_by: [riskos.panel.build]
+
+  - id: LGD_001
+    description: Materiality floor on the LGD denominator (UPB at default)
+    value:
+      upb_floor: 1000.0
+      currency: USD
+    source: judgement
+    rationale: >-
+      LGD is a ratio, and the ratio carries no information when the quantity it
+      divides by has rounded to nothing. A small number of loans reach
+      disposition with a near-zero balance while still incurring foreclosure
+      expenses: the most extreme has a balance of $0.01 against $6,573 of
+      expenses, giving a ratio of 657,341. Dropping the three loans below a
+      $100 balance moves the mean LGD from 42.6217 to 0.4926 - a 99% change
+      from removing 0.02% of observations, which identifies the cause as
+      degenerate denominators rather than economic loss.
+      IMPORTANT: this is a floor on the DENOMINATOR, not a bound on the ratio.
+      It removes observations where the statistic is undefined in practice; it
+      does not alter observations that are economically real. LGD values below
+      0 and above 1 are retained in full (see LGD_002).
+    materiality: >-
+      Decisive for the reported mean and immaterial for everything else. At a
+      $1,000 floor 9 of 18,998 observations are dropped (0.05%) and the mean is
+      0.4877. The median is unaffected to three decimal places at any floor.
+    sensitivity_test: >-
+      reports/figures/lgd_denominator_sensitivity.csv reports the mean across
+      floors from $0 to $25,000. Above $100 the mean is flat within [0.4827,
+      0.4926], a range of about 2%, so the specific choice of floor is not a
+      material judgement once the degenerate cases are removed.
+    used_by: [riskos.ecl.lgd]
+
+  - id: LGD_002
+    description: Optional [0, 1] bounded LGD variant, reported alongside the unbounded estimate
+    value:
+      lower: 0.0
+      upper: 1.0
+      applied_as_default: false
+    source: judgement
+    rationale: >-
+      The unbounded empirical LGD is the primary estimate and is what feeds ECL.
+      Negative values (3.74% of observations) are real: median MI recovery
+      $7,965 and median sale proceeds $138,652 against a median balance of
+      $133,435, so recoveries exceeded the balance. Values above 1 (7.96%) are
+      equally real: median balance $72,995 against median loss $84,842, because
+      accrued interest and foreclosure expenses are added to the shortfall.
+      A bounded variant is defined only because some downstream conventions
+      require LGD in [0, 1]. It is never substituted silently.
+    materiality: >-
+      Moderate and quantified. Bounding moves the mean LGD from 0.4865 to
+      0.4724, a reduction of 2.90%, which flows proportionally into portfolio
+      ECL. Bounding is the more conservative direction for the numerator of the
+      loss but understates the genuine dispersion of outcomes.
+    sensitivity_test: >-
+      reports/figures/lgd_bounding_sensitivity.csv reports both variants side by
+      side, and portfolio ECL is computed under both.
+    used_by: [riskos.ecl.lgd]
+
+  - id: LGD_003
+    description: Credibility constant for shrinking thin LGD segments to the portfolio mean
+    value: 50
+    source: judgement
+    rationale: >-
+      Segment LGD is estimated by original-LTV band and property state. Many
+      cells are thin - a state with a handful of disposals in one LTV band -
+      and their raw means are noise. Each segment is weighted n / (n + k)
+      toward its own mean and the remainder toward the global mean. k = 50
+      means a segment needs 50 observations to carry half its own weight, which
+      is a conventional order of magnitude for credibility weighting and
+      degrades gracefully to the portfolio mean rather than to a small-sample
+      artefact.
+    materiality: >-
+      Medium for segment-level ECL, negligible for the portfolio total, since
+      shrinkage redistributes between segments without changing the weighted
+      mean materially.
+    sensitivity_test: >-
+      reports/figures/lgd_segments.csv reports raw mean, observation count and
+      credibility weight per segment, so any segment can be re-read at a
+      different k or without shrinkage.
+    used_by: [riskos.ecl.lgd]
+
+  - id: EAD_001
+    description: Exposure at default for an amortising mortgage
+    value:
+      definition: current_actual_upb_plus_current_deferred_upb
+      credit_conversion_factor: 1.0
+    source: convention
+    rationale: >-
+      A closed-end residential mortgage has no undrawn commitment, so exposure
+      at default is the outstanding balance and the credit conversion factor is
+      1.0 by construction rather than by estimation. Current actual UPB already
+      includes the deferred (non-interest-bearing) portion per the User Guide,
+      so the two are not added twice; the deferred balance is carried separately
+      only for reporting.
+    materiality: >-
+      Low. This is a structural property of the product, not an estimate. It
+      would be material for a revolving product, where the drawn balance at
+      default typically exceeds the balance observed today.
+    sensitivity_test: >-
+      Not applicable - there is no free parameter. The simplification is
+      recorded so that a reviewer can confirm it was a decision rather than an
+      omission.
+    used_by: [riskos.ecl.ead]
+
+  - id: HAZ_001
+    description: Loan-level sample size for fitting the discrete-time hazard model
+    value:
+      n_loans: 220000
+      seed: 20250901
+      approx_loan_months: 2400000
+    source: judgement
+    rationale: >-
+      The full risk set is 54,728,617 loan-months across 947,027 loans. Fitting
+      a cluster-robust GLM on that directly is not tractable on a laptop, so a
+      loan-level sample is taken. Sampling is by LOAN and never by loan-month:
+      a random sample of months would break each loan's survival path, which is
+      precisely the object the hazard model estimates.
+      The sample is drawn before the 1999-2006 fitting-window restriction, and
+      most of the reduction happens there rather than in the sampling: loans
+      originated after 2006 contribute no months to the window at all. 220,000
+      sampled loans leaves roughly 88,000 with observations in the window and
+      about 2.4 million loan-months. At the 1999-2006 monthly default hazard of
+      0.000528 that is on the order of 1,200 default events, against roughly
+      thirteen estimable parameters.
+    materiality: >-
+      Medium. Governs the width of the cluster-robust confidence intervals on
+      the hazard coefficients, not their central estimates. The seasoning
+      baseline is estimated from tens of thousands of events per age band.
+    sensitivity_test: >-
+      The fitted baseline is compared against the empirical hazard by age band
+      computed on the FULL 54.7M-row risk set in
+      reports/figures/hazard_empirical_seasoning.csv. Agreement between the
+      fitted and the full-population empirical curve is the check that the
+      sample is representative.
+    used_by: [riskos.models.train_hazard]
+
+  - id: HAZ_002
+    description: Loan-age bands forming the hazard baseline
+    value: [6, 12, 24, 36, 60, 96, 144]
+    source: judgement
+    rationale: >-
+      Age-band dummies rather than a spline, because the seasoning curve is the
+      object of interest and step estimates are directly readable as hazard
+      ratios against the reference band. Boundaries are narrow early, where the
+      hazard changes fastest, and widen with age: the empirical monthly default
+      hazard runs 0.00018 in months 0-6, 0.00063 in 7-12, 0.00102 in 13-24,
+      0.00137 in 25-36, peaks at 0.00145 in 37-60, then declines to 0.00100.
+      The bands are placed to capture that shape, not to optimise fit.
+    materiality: >-
+      High for the lifetime PD term structure, which is what the bands
+      determine. Low for the 12-month PD, which is dominated by the first one
+      or two bands.
+    sensitivity_test: >-
+      The fitted baseline in reports/figures/hazard_baseline.csv is compared
+      against the model-free empirical hazard by the same bands. A band whose
+      fitted hazard ratio contradicts the empirical ordering would indicate the
+      covariates are absorbing seasoning that belongs in the baseline.
+    used_by: [riskos.models.hazard]
+
+  - id: HAZ_003
+    description: Hazard model fitting window restricted to 1999-2006
+    value:
+      max_year: 2006
+      estimable_age_bands: 5
+      inestimable_age_bands: [age_96_144, age_144_plus]
+    source: judgement
+    rationale: >-
+      The hazard model is fitted on the same window as the direct 12-month model
+      (build plan §7.4), for two reasons. First, the §7.8 reconciliation is only
+      meaningful if both models see the same period: fitted across all periods
+      the monthly default hazard is 0.001017 against 0.000528 in 1999-2006, a
+      factor of 1.93, and the hazard model over-predicted the training panel by
+      a ratio of 2.07 for reasons entirely attributable to the window. Second,
+      the §7.10 two-stage design requires the loan-level model to carry
+      idiosyncratic risk only, with the cycle supplied by the macro overlay.
+    materiality: >-
+      High, and in two directions. It corrects a 2x over-prediction in the
+      12-month reconciliation, which now sits at a ratio of 0.892. But it also
+      means no loan in the fitting sample exceeds about 96 months of age, so the
+      two oldest age bands are inestimable and are dropped. The lifetime PD term
+      structure beyond 96 months is therefore an EXTRAPOLATION of the oldest
+      estimable band, not a fitted quantity. See finding F-008.
+    sensitivity_test: >-
+      The fitted baseline is compared against the model-free empirical hazard by
+      age band on the full 54.7M-row risk set. The fitted hazard ratios rise
+      2.84, 3.88, 5.06, 5.75 then fall to 4.03, reproducing the empirical peak
+      at 36-60 months. Lifetime ECL must additionally be reported under an
+      alternative flat-beyond-96-months assumption.
+    used_by: [riskos.models.train_hazard]
+
+  - id: HAZ_004
+    description: House-price fallback when a loan's origination predates the HPI series
+    value:
+      fallback_index_ratio: 1.0
+      hpi_series_start: 2000-01-01
+      affected_share_of_fitting_window: 0.191323
+    source: judgement
+    rationale: >-
+      Mark-to-market LTV scales original LTV by amortisation and by the ratio of
+      the origination-month house-price index to the current one. The S&P
+      CoreLogic Case-Shiller 20-city series (SPCS20RSA) begins 2000-01, so a
+      loan originated before that has no origination index. The ratio falls back
+      to 1.0, which leaves mark-to-market LTV driven by amortisation alone and
+      assumes no house-price movement between origination and 2000-01. The
+      alternative - dropping those rows - would discard the whole 1999 vintage
+      from a fitting window that runs only to 2006. Registered late: this was
+      cited as HAZ_004 in riskos.models.train_hazard before it existed here.
+    materiality: >-
+      Moderate. 19.13% of loan-months in the 1999-2006 fitting window take the
+      fallback. Because U.S. house prices rose over 1999-2000, the fallback
+      understates the equity those loans had actually built, so their
+      mark-to-market LTV is biased slightly high and their hazard slightly
+      conservative.
+    sensitivity_test: >-
+      Refit with the affected vintages excluded and compare the mtm_ltv
+      coefficient. A coefficient that moves materially would mean the fallback
+      rows are driving the estimate rather than merely being carried by it.
+    used_by: [riskos.models.train_hazard]
+
+  - id: HAZ_005
+    description: Delinquency-state bands for the hazard specification
+    value: [0, 1]
+    source: empirical
+    rationale: >-
+      Delinquency is a STATE, not a dose, and enters as band dummies rather than
+      a linear term. On the lagged covariate the empirical monthly default
+      hazard is 0.000017 when current, 0.001218 at 30-59 days and 0.328234 at
+      60-89 days - a span of roughly 19,000x that no single slope can hold. The
+      bands are therefore the three observable states, with the current state as
+      the reference level. The top band is open-ended at 2+ because reaching 90
+      days past due IS the default event under the project definition, so a loan
+      at 3+ months delinquent has already left the risk set and finer bands
+      above it would be inestimable. See findings F-012 and F-014.
+    materiality: >-
+      High for per-state calibration and currently zero for reported figures.
+      Banded, the fitted hazard reproduces the empirical rate in every state
+      (ratios 1.000, 1.000, 0.9996) against the primary specification's 29.1x
+      over-prediction for current loans and 131x under-prediction at 60-89 days.
+      The banded specification is nonetheless NOT the primary one, because it
+      cannot be projected forward without a delinquency transition model
+      (F-014), so no reported ECL figure depends on these bands today.
+    sensitivity_test: >-
+      reports/figures/hazard_specification_comparison.csv fits both
+      specifications on the same sample and reports the intercept, the mean
+      hazard and the 12-month reconciliation ratio for each. The banded
+      specification's ratio of 0.188 against the primary's 0.889 is the
+      quantified cost of holding the state fixed across the projection.
+    used_by: [riskos.models.hazard, riskos.models.train_hazard]
+
+  - id: MACRO_001
+    description: Macro overlay estimation window and specification
+    value:
+      primary_window: "1999Q1-2006Q4"
+      effective_window: "2001Q1-2006Q4"
+      n_observations: 24
+      hpi_series_start: "2000Q1"
+      max_covariates: 2
+      newey_west_lags: 4
+      confidence_level: 0.95
+    source: judgement
+    rationale: >-
+      Build plan §7.10. At most two covariates on a couple of dozen
+      serially-correlated quarterly observations: three would not be
+      identified. Newey-West standard errors with four lags, because quarterly
+      default rates are strongly autocorrelated and OLS standard errors would be
+      far too narrow.
+      CORRECTED 2026-09-13 (F-019). This entry originally recorded 32
+      observations on 1999Q1-2006Q4. The fit has only ever used 24. The
+      house-price covariate is the year-on-year change in the Case-Shiller
+      20-city index, which begins in January 2000, so the first quarter with a
+      defined year-on-year change is 2001Q1 and the two earliest years of the
+      panel drop out of the regression silently. The 1999 panel start was
+      justified as giving this regression enough pre-crisis observations; for
+      the house-price term it does not, and that reason now reads as a
+      motivation for the panel rather than a property of the fit.
+    materiality: >-
+      High. The overlay is the intended remediation for F-006, the threefold
+      under-prediction of default under stress, so its coefficients drive the
+      difference between scenario ECL figures.
+    sensitivity_test: >-
+      Estimated on both the 1999-2006 window and the full 1999-2019 history,
+      with both reported. Coefficient confidence intervals are propagated into
+      scenario ECL as a range rather than a point estimate, and the 2008-2009
+      backtest is reported regardless of outcome.
+    used_by: [riskos.ecl.macro]
+
+  - id: ECL_001
+    description: Significant Increase in Credit Risk (SICR) threshold for IFRS 9 stage 2
+    value:
+      lifetime_pd_ratio: 2.0
+      dpd_backstop_days: 30
+    source: judgement
+    rationale: >-
+      A loan moves to stage 2 when its lifetime PD has at least DOUBLED since
+      origination, or when it is 30 or more days past due. The 30-DPD backstop
+      is IFRS 9's own rebuttable presumption and is applied as an override, so a
+      delinquent loan cannot remain in stage 1 whatever the ratio test says.
+      The doubling threshold is a judgement and is explicitly labelled as one:
+      the standard requires a "significant" increase without defining it
+      numerically, and a relative-doubling test is one of several defensible
+      readings in common use.
+    materiality: >-
+      High and commercially the largest single judgement in the ECL
+      calculation. Moving a loan from stage 1 to stage 2 switches it from a
+      12-month loss estimate to a lifetime one, which for a mortgage multiplies
+      its provision several times over.
+    sensitivity_test: >-
+      reports/figures/ecl_staging_sensitivity.csv reports the stage-2
+      population across thresholds from 1.5x to 4.0x, and portfolio ECL is
+      recomputed at each.
+    used_by: [riskos.ecl.engine]
+
+  - id: ECL_002
+    description: Discounting convention for expected credit loss
+    value:
+      rate: loan_effective_interest_rate
+      timing: mid_period
+    source: convention
+    rationale: >-
+      IFRS 9 discounts expected cash shortfalls at the loan's original effective
+      interest rate, so the loan's own current rate is used rather than a
+      portfolio or risk-free rate. Losses are assumed to occur on average
+      halfway through the measurement horizon, which is the standard mid-period
+      convention and avoids the two extremes of assuming default on day one or
+      at the horizon end.
+    materiality: >-
+      Low over a 12-month horizon, where discounting moves ECL by well under 1%.
+      Material for lifetime ECL on a 25-year mortgage, where the discount factor
+      over the remaining term is substantial.
+    sensitivity_test: >-
+      ECL is reported undiscounted alongside the discounted figure so the effect
+      of the convention is visible rather than embedded.
+    used_by: [riskos.ecl.engine]
+
+
+  - id: MON_001
+    description: Observed-over-expected bands for the calibration monitoring rule (MON-04)
+    value:
+      warn: [0.80, 1.25]
+      breach: [0.50, 2.00]
+    source: judgement
+    rationale: >-
+      Set before the monitoring run, from what the ratio means rather than from
+      what the timeline turned out to contain. ECL is PD x LGD x EAD, so the
+      ratio passes straight into a money number: a ratio of 2.0 means the
+      provision is understated by half, which is the point at which the error is
+      material to reported earnings rather than to model quality. The warn band
+      is deliberately asymmetric - 0.80 to 1.25 rather than 0.75 to 1.25 -
+      because both edges are the same multiplicative distance from 1.0, and a
+      band symmetric in level would be looser on under-prediction, which is the
+      direction that understates the provision.
+    materiality: >-
+      High. This is the rule that actually detected the 2008 deterioration:
+      it warns on 2007Q1 (ratio 1.43) and breaches on 2007Q4 (2.08). Moving the
+      breach edge to 2.5 would have delayed the breach by one quarter.
+    sensitivity_test: >-
+      `monitoring_performance_timeline.csv` reports the raw ratio for every
+      window, so any band can be re-read off the timeline without a rerun. The
+      measured in-sample false-positive rate for this rule is 15.6%.
+    used_by: [riskos.monitor.config, conf/monitoring.yaml]
+
+  - id: MON_002
+    description: Proportional Gini decline from the development sample (MON-05)
+    value:
+      warn: 0.10
+      breach: 0.25
+    source: judgement
+    rationale: >-
+      Expressed as a proportional fall from the development-sample Gini rather
+      than as an absolute floor, because the question a monitoring control asks
+      is whether the model still ranks as well as it did when it was approved,
+      not whether it clears some universal bar. An absolute floor would also be
+      unusable across model families, where achievable Gini differs by
+      construction.
+    materiality: >-
+      Medium. Discrimination degrades far more slowly than calibration on this
+      portfolio - Gini falls from about 0.78 to 0.61 across 2008 while the
+      calibration ratio moves by a factor of nearly five - so this rule is the
+      slower of the two lagging indicators and did not drive the escalation.
+    sensitivity_test: >-
+      The in-sample false-positive rate for this rule is 0.0%, measured over 30
+      evaluable development-sample windows, so the threshold is not firing on
+      noise. Per-window Gini is in the performance timeline.
+    used_by: [riskos.monitor.config, conf/monitoring.yaml]
+
+  - id: MON_003
+    description: Relative increase in the Brier reliability term (MON-06)
+    value:
+      warn: 1.0
+      breach: 4.0
+    source: judgement
+    rationale: >-
+      Intended to isolate miscalibration from the irreducible base-rate variance
+      that moves the headline Brier score whenever the default rate moves.
+      KNOWN DEFECT, recorded as F-017: the development-sample baseline is 4.6e-6,
+      and quarterly windows range from 3.1e-7 to 1.2e-5 through sampling
+      variation alone, so a 400% relative threshold is crossed routinely by a
+      well-calibrated model. The entry is kept at its committed value rather than
+      retuned, because tuning a control until its in-sample rate looks acceptable
+      is fitting the control to the data it polices.
+    materiality: >-
+      Low. Lowest severities in the rulebook and nothing in the reported ECL
+      depends on it. Material as a worked example of a relative threshold on a
+      near-zero baseline having no stable meaning.
+    sensitivity_test: >-
+      Measured in-sample false-positive rate 76.7%, in
+      `monitoring_rule_false_positives.csv`. That number is the sensitivity test
+      and it fails; see F-017 for the two replacement options.
+    used_by: [riskos.monitor.config, conf/monitoring.yaml]
+
+  - id: MON_004
+    description: Minimum window size before a monitoring alert is raised or a metric computed
+    value:
+      min_rows_for_alert: 2000
+      min_defaults_for_performance: 50
+    source: judgement
+    rationale: >-
+      A PSI on a few hundred rows is dominated by sampling noise, and an AUC on
+      a dozen defaults is not a weak estimate of discrimination but not an
+      estimate of it at all. Below the row floor a window is measured and
+      evaluated but its alert is marked suppressed rather than dropped, because
+      "no alert" and "alert suppressed for insufficient data" are different
+      statements to a reviewer. Below the default floor, rank-based metrics are
+      reported as null; the observed-over-expected ratio is still reported,
+      because it is a comparison of two means and remains meaningful, if wide,
+      on few events.
+    materiality: >-
+      Low on this panel, where all 64 windows clear the row floor and only the
+      first two quarters of 1999 fall below the default floor. Would matter on a
+      smaller book or a finer window.
+    sensitivity_test: >-
+      Both counts are reported per window in the timelines, and the `evaluated`
+      and `reason` columns state which windows were refused and why.
+    used_by: [riskos.monitor.config, conf/monitoring.yaml]
+
+  - id: MON_005
+    description: Monitoring window frequency and the outcome-observability lag
+    value:
+      frequency: quarterly
+      outcome_window_months: 12
+      performance_metrics_lag_months: 12
+    source: judgement
+    rationale: >-
+      Quarterly because monthly windows on this panel hold too few defaults for
+      the observed rate to be readable, while annual windows would have averaged
+      2008 away. The lag is not a choice: the label is a 12-month forward default
+      flag, so the outcome for an observation dated T is unknown until T+12m, and
+      the lag is recorded in config so it is visible to a reviewer without
+      reading the panel builder.
+    materiality: >-
+      High for interpretation. The lag is the entire reason drift monitoring
+      exists, and it is what makes the only rule that caught the 2008
+      deterioration structurally twelve months late: the 2007Q1 calibration warn
+      was not computable until 2008-03-31.
+    sensitivity_test: >-
+      Every performance row carries `outcome_matured_at`, and
+      `performance.visible_at` renders the timeline as it would have appeared on
+      any given reporting date, so the blind spot can be inspected directly
+      rather than argued about.
+    used_by: [riskos.monitor.config, conf/monitoring.yaml]
+
+  - id: MON_006
+    description: In-sample firing rate above which a rule is reported as unfit to claim a detection
+    value: 0.25
+    source: judgement
+    rationale: >-
+      Every development-sample window is one on which the model is, by
+      construction, working. A rule that fires on more than a quarter of them is
+      producing false positives at a rate that makes any single firing weak
+      evidence, so a months-of-warning figure it wins is annotated rather than
+      reported bare. The level is a judgement: it is set high enough that an
+      occasional in-sample firing does not disqualify a rule, and low enough to
+      catch a rule that is effectively always on. Two of the six committed rules
+      exceed it by a wide margin (91% and 88%), so the conclusion does not turn
+      on where between 0.1 and 0.5 the line sits.
+    materiality: >-
+      Medium. Governs a caveat on a reported number, not the number itself. The
+      per-rule rates are reported in full regardless, so a reader can apply any
+      cut-off they prefer.
+    sensitivity_test: >-
+      `monitoring_rule_false_positives.csv` reports the raw rate per rule
+      alongside the window and firing counts it is computed from.
+    used_by: [riskos.monitor.alerts]
+
+  - id: MON_007
+    description: Count of significantly drifting inputs that triggers the breadth rule (MON-03)
+    value:
+      warn: 0
+      breach: 2
+    source: judgement
+    rationale: >-
+      MON-02 asks how far the worst single input has moved; this rule asks how
+      many have moved at all, because the two have different causes. One
+      drifting input is usually a feature-level change in the book. Three at
+      once is usually an upstream data problem - a vendor field changing
+      coverage, a parsing change, a source cut over - and the first place to look
+      is the ingest layer rather than the model. A warn at any single feature is
+      deliberately sensitive, since the rule is a pointer to an investigation
+      rather than an escalation in its own right. The "significant" band that
+      defines the count is PSI_001, not this entry.
+    materiality: >-
+      Low individually, and the rule carries the lowest severities in the
+      rulebook. KNOWN DEFECT, recorded as F-016: the rule inherits the pooled
+      reference problem from MON-02 and fires on 28 of 32 development-sample
+      windows, an 87.5% false-positive rate. Kept at its committed value rather
+      than retuned; the fix is to exclude time-structural features from the
+      count, not to raise the count.
+    sensitivity_test: >-
+      `monitoring_csi_detail.csv` lists every feature's CSI per window, so the
+      count can be recomputed at any band, and
+      `monitoring_csi_epsilon_dominated.csv` identifies the windows where the
+      count is driven by empty bins rather than by data.
+    used_by: [riskos.monitor.config, conf/monitoring.yaml]

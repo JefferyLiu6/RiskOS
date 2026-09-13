@@ -1,0 +1,6 @@
+feature,declared_trend,n_bins,holds
+credit_score,descending,6,true
+original_ltv,ascending,6,true
+original_cltv,ascending,6,true
+original_dti,ascending,6,true
+original_interest_rate,ascending,6,true

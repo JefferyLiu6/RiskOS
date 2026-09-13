@@ -1,0 +1,7 @@
+rule_id,metric,in_sample_windows,evaluated,fired,breached,false_positive_rate
+MON-01,score_psi,32,32,3,0,0.09375
+MON-02,max_feature_csi,32,32,29,28,0.90625
+MON-03,n_features_csi_significant,32,32,28,11,0.875
+MON-04,observed_over_expected,32,32,4,2,0.125
+MON-05,gini,32,30,0,0,0.0
+MON-06,brier_reliability,32,30,14,4,0.4666666666666667

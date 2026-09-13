@@ -1,0 +1,177 @@
+# Phase 1 — data sources, paths, vintages, layout version.
+#
+# The layout below is transcribed from the Single Family Loan-Level Dataset
+# General User Guide, Release 47 (July 2026), which ships with the download.
+# The Guide's Glossary lists attributes "in the order in which they appear in
+# the files"; that ordering is what the column lists encode. Every field was
+# verified position-by-position against a real record from sample_orig_1999.txt
+# and sample_perf_1999.txt before being recorded here.
+#
+# Per-column `null_values` are the Guide's documented "Not Available" sentinels
+# (e.g. 9999 for a credit score, 999 for LTV/CLTV/DTI). They are nulled at parse
+# time so no sentinel is ever mistaken for a real value.
+
+source:
+  name: Freddie Mac Single-Family Loan-Level Dataset (SFLLD)
+  variant: sample            # 50,000 loans per full vintage year, not the full dataset
+  access: manual             # Clarity Data Intelligence, free registration; no scraping
+  licence_note: >-
+    Terms permit personal and internal analytical use. Commercial redistribution
+    requires a licence. Raw and derived loan-level data are never committed.
+
+paths:
+  raw: data/raw
+  interim: data/interim
+  panel: data/panel
+  macro: data/macro
+
+# Vintages required by the build plan §4.1.
+vintages:
+  # Needed in full. 1999-2003 exist specifically so the macro model in §7.9 has
+  # enough pre-crisis observations to be identified.
+  core: [1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012]
+  # Benign-period contrast for stability testing.
+  benign: [2015, 2016, 2017, 2018, 2019]
+
+discovery:
+  # Freddie Mac has used more than one filename convention. Each candidate is
+  # tried in order; discovery reports which one matched and lists any .txt file
+  # under data/raw/ that matched none, rather than ignoring it silently.
+  # `{year}` is substituted per vintage; `*` globs.
+  candidate_patterns:
+    - label: sample_annual
+      origination: "**/sample_orig_{year}.txt"
+      performance: "**/sample_perf_{year}.txt"
+    - label: historical_annual
+      origination: "**/historical_data_{year}.txt"
+      performance: "**/historical_data_time_{year}.txt"
+    - label: historical_quarterly
+      origination: "**/historical_data_{year}Q*.txt"
+      performance: "**/historical_data_time_{year}Q*.txt"
+  search_recursive: true
+
+format:
+  delimiter: "|"
+  header: false
+  encoding: utf-8
+  null_values: [""]
+  treat_whitespace_as_null: true
+
+layout:
+  version: "Single Family Loan-Level Dataset General User Guide, Release 47, July 2026"
+  guide_path: data/raw/general_user_guide_july_2026.pdf
+  # Field 20 of the origination file, field 1 of the performance file.
+  key_column: loan_sequence_number
+
+  # 31 fields. Verified against sample_orig_1999.txt record 1.
+  origination_columns:
+    - {name: credit_score, dtype: int, null_values: ["9999"], description: "Classic FICO, 300-850; 9999 = Not Available"}
+    - {name: first_payment_date, dtype: date, date_format: "%Y%m", description: "Month/year first scheduled payment is due"}
+    - {name: first_time_homebuyer_flag, dtype: str, null_values: ["9"], description: "Y/N; 9 = Not Available or Not Applicable"}
+    - {name: maturity_date, dtype: date, date_format: "%Y%m", description: "Month/year of final scheduled payment"}
+    - {name: msa, dtype: str, description: "MSA or Metropolitan Division code; null = not in an MSA or unknown"}
+    - {name: mi_percentage, dtype: int, null_values: ["999"], description: "MI coverage 1-55%; 0 = No MI; 999 = Not Available"}
+    - {name: number_of_units, dtype: int, null_values: ["99"], description: "1-4 dwelling units; 99 = Not Available"}
+    - {name: occupancy_status, dtype: str, null_values: ["9"], description: "P = Primary, I = Investment, S = Second home; 9 = Not Available"}
+    - {name: original_cltv, dtype: int, null_values: ["999"], description: "Original combined loan-to-value %; 999 = Not Available"}
+    - {name: original_dti, dtype: int, null_values: ["999"], description: "Original debt-to-income ratio 0-65%; 999 = Not Available"}
+    - {name: original_upb, dtype: float, description: "Original UPB, rounded to nearest $1,000"}
+    - {name: original_ltv, dtype: int, null_values: ["999"], description: "Original loan-to-value %; 999 = Not Available"}
+    - {name: original_interest_rate, dtype: float, description: "Note rate at origination"}
+    - {name: channel, dtype: str, null_values: ["9"], description: "R = Retail, B = Broker, C = Correspondent, T = TPO not specified; 9 = Not Available"}
+    - {name: prepayment_penalty_flag, dtype: str, description: "Y/N prepayment penalty"}
+    - {name: amortization_type, dtype: str, description: "FRM = fixed rate, ARM = adjustable rate"}
+    - {name: property_state, dtype: str, description: "Two-letter state or territory abbreviation"}
+    - {name: property_type, dtype: str, null_values: ["99"], description: "CP/CO/PU/SF/MH; 99 = Not Available"}
+    - {name: postal_code, dtype: str, null_values: ["000"], description: "First three digits of postal code; 000 = Unknown"}
+    - {name: loan_sequence_number, dtype: str, description: "Unique loan identifier, PYYQnXXXXXXX"}
+    - {name: loan_purpose, dtype: str, null_values: ["9"], description: "P = Purchase, C = Cash-out refi, N = No cash-out refi, R = Refi not specified; 9 = Not Available"}
+    - {name: original_loan_term, dtype: int, description: "Months of scheduled payments at origination"}
+    - {name: number_of_borrowers, dtype: int, null_values: ["99"], description: "Borrowers obligated to repay; 99 = Not Available"}
+    - {name: seller_name, dtype: str, description: "Seller, or 'OTHER' below the 1% disclosure threshold"}
+    - {name: super_conforming_flag, dtype: str, description: "Y = exceeds conforming limits; N/null = not super conforming"}
+    - {name: pre_harp_loan_sequence_number, dtype: str, description: "Loan this Relief Refinance replaced; populated only when harp_indicator = Y"}
+    - {name: program_indicator, dtype: str, description: "H = Home Possible, F = HFA Advantage, R = Refi Possible; null = not applicable"}
+    - {name: harp_indicator, dtype: str, description: "Y = Relief Refinance loan, N = not"}
+    - {name: property_valuation_method, dtype: str, null_values: ["7"], description: "1 = Appraisal waiver, 2 = Appraisal, 3 = Other, 4 = ACE+ PDR; 7 = Not Available"}
+    - {name: interest_only_flag, dtype: str, description: "Y = interest-only for a specified period"}
+    - {name: vantage_score, dtype: int, null_values: ["9999"], description: "VantageScore 4.0, 300-850; 9999 = Not Available"}
+
+  # 35 fields. Verified against sample_perf_1999.txt record 1.
+  performance_columns:
+    - {name: loan_sequence_number, dtype: str, description: "Unique loan identifier, joins to origination"}
+    - {name: monthly_reporting_period, dtype: date, date_format: "%Y%m", description: "As-of month for the record"}
+    - {name: current_actual_upb, dtype: float, description: "Ending balance = interest bearing UPB + deferred UPB"}
+    - {name: current_loan_delinquency_status, dtype: str, null_values: ["XX"], description: "Months delinquent: 00 = current, 01 = 30-59d, 02 = 60-89d, 03 = 90-119d, capped at 99; RA = REO Acquisition; XX = Not Available"}
+    - {name: loan_age, dtype: int, description: "Scheduled payments since origination (or since modification)"}
+    - {name: remaining_months_to_legal_maturity, dtype: int, description: "Scheduled monthly payments remaining"}
+    - {name: defect_settlement_date, dtype: date, date_format: "%Y%m", description: "Underwriting or major servicing defect settlement date"}
+    - {name: modification_flag, dtype: str, description: "Y = modified this period, P = prior period; null = not modified"}
+    - {name: zero_balance_code, dtype: str, description: "Reason the balance went to zero; see zero_balance_codes below"}
+    - {name: zero_balance_effective_date, dtype: date, date_format: "%Y%m", description: "Period in which the zero-balance event occurred"}
+    - {name: current_interest_rate, dtype: float, description: "Rate in effect this reporting period"}
+    - {name: current_deferred_upb, dtype: float, description: "Non-interest-bearing portion of current actual UPB"}
+    - {name: ddlpi, dtype: date, date_format: "%Y%m", description: "Due date of last paid installment"}
+    - {name: mi_recoveries, dtype: float, description: "MI claim proceeds; recoveries negative, losses positive"}
+    - {name: net_sales_proceeds, dtype: float, description: "Proceeds remitted at property disposition"}
+    - {name: non_mi_recoveries, dtype: float, description: "Non-MI proceeds; recoveries negative, losses positive"}
+    - {name: total_expenses, dtype: float, description: "Legal + maintenance/preservation + taxes/insurance + miscellaneous"}
+    - {name: legal_costs, dtype: float, description: "Legal costs of the sale, excluded from net sales proceeds"}
+    - {name: maintenance_and_preservation_costs, dtype: float, description: "Maintenance, preservation, repair, REO management"}
+    - {name: taxes_and_insurance, dtype: float, description: "Taxes and insurance owed, associated with the sale"}
+    - {name: miscellaneous_expenses, dtype: float, description: "Title, administrative, auction and other sale fees"}
+    - {name: actual_loss, dtype: float, description: "(ZB removal UPB + net sales proceeds) + delinquent accrued interest + expenses + MI recoveries + non-MI recoveries; loss positive, gain negative"}
+    - {name: cumulative_modification_costs, dtype: float, description: "Cumulative modification cost to date"}
+    - {name: interest_rate_step_indicator, dtype: str, description: "Y = step modification, N = non-step; null = not modified"}
+    - {name: payment_deferral_flag, dtype: str, description: "C = current period, P = prior period"}
+    - {name: estimated_ltv, dtype: int, null_values: ["999"], description: "Balance over AVM-estimated property value, 1-998%; 999 = Not Available. Only populated April 2017 onward"}
+    - {name: zero_balance_removal_upb, dtype: float, description: "Total UPB immediately prior to the zero-balance code"}
+    - {name: delinquent_accrued_interest, dtype: float, description: "Delinquent interest owed at default; populated for zero balance codes 02, 03, 09, 15"}
+    - {name: delinquency_due_to_disaster, dtype: str, description: "Y = disaster-related hardship; only populated January 2014 onward"}
+    - {name: borrower_assistance_status_code, dtype: str, description: "F = Forbearance, R = Repayment, T = Trial Period; only populated January 2014 onward"}
+    - {name: current_period_modification_costs, dtype: float, description: "Modification cost recognised this period"}
+    - {name: current_interest_bearing_upb, dtype: float, description: "Interest-bearing portion of the UPB"}
+    - {name: mi_cancellation_flag, dtype: str, null_values: ["7"], description: "Y = MI cancelled, N = not; 7 = Not Applicable/Not Available. Disclosed from 2015"}
+    - {name: servicer_name, dtype: str, description: "Servicer this period, or 'OTHER' below the 1% disclosure threshold"}
+    - {name: bankruptcy_cramdown_costs, dtype: float, description: "Bankruptcy cramdown costs; only populated in the period of zero balance"}
+
+zero_balance_codes:
+  # Transcribed verbatim from the User Guide, Release 47, "Zero Balance Codes".
+  # The enum uses the Guide's own labels rather than a paraphrase: the Guide
+  # combines short sale and charge-off into a single code (03), so inventing
+  # separate members would imply a distinction the data cannot support.
+  #
+  # Observed in the delivered files: 01, 02, 03, 09, 15, 16, 96 (plus null for
+  # loans still on book). The mapping below covers all seven; ingest fails on
+  # any code outside it.
+  column: zero_balance_code
+  enum: [prepaid_or_matured, third_party_sale, short_sale_or_charge_off,
+         reo_disposition, whole_loan_sale, reperforming_loan_securitization,
+         defect_prior_to_credit_event]
+  mapping:
+    "01": prepaid_or_matured                 # Prepaid or Matured (Voluntary Payoff)
+    "02": third_party_sale                   # Third Party Sale
+    "03": short_sale_or_charge_off           # Short Sale or Charge Off
+    "09": reo_disposition                    # REO Disposition
+    "15": whole_loan_sale                    # Whole Loan sales
+    "16": reperforming_loan_securitization   # Reperforming loan securitizations
+    "96": defect_prior_to_credit_event       # Confirmed Underwriting or Major Servicing Defect
+
+macro:
+  provider: FRED
+  cache: data/macro
+  # Series are cached at their native frequency. Frequency alignment (weekly to
+  # monthly, quarterly to monthly) is a feature-engineering decision with its
+  # own assumptions, made in Phase 3, not silently applied at ingest.
+  series:
+    unemployment: UNRATE                   # national, monthly
+    mortgage_rate: MORTGAGE30US            # weekly
+    real_gdp: GDPC1                        # quarterly
+    house_prices_national: SPCS20RSA       # fallback when no state series exists
+  state_house_prices:
+    # Build plan §4.2 prefers state-level HPI so the macro covariate matches the
+    # loan's property state. FHFA all-transactions state indices on FRED follow
+    # this pattern; it is verified at pull time, and a state whose series is
+    # unavailable is logged and skipped rather than silently dropped.
+    pattern: "{state}STHPI"
+    states: []   # populated in Phase 2 from the property states present in the panel

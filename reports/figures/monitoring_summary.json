@@ -1,0 +1,81 @@
+{
+  "reference_split": "train",
+  "rules_evaluated": 6,
+  "windows": 64,
+  "models": [
+    {
+      "model_id": "RISKOS_PD_001",
+      "model_version": "1.0.0",
+      "model_family": "woe_scorecard",
+      "development_sample_ends": "2006-12-31",
+      "windows": 64,
+      "first_window": "1999Q1",
+      "last_window": "2019Q4",
+      "max_score_psi": 0.23586847943174044,
+      "max_stress_score_psi": 0.011347999927557431,
+      "windows_psi_significant": 0,
+      "alerts_fired": 262,
+      "breaches": 145,
+      "breaches_out_of_sample": 105,
+      "suppressed": 0,
+      "rule_false_positive_rates": {
+        "MON-01": 0.15625,
+        "MON-02": 0.90625,
+        "MON-03": 0.875,
+        "MON-04": 0.15625,
+        "MON-05": 0.0,
+        "MON-06": 0.7666666666666667
+      },
+      "detection_gap": {
+        "leading_metric": "max_feature_csi",
+        "leading_rule": "MON-02",
+        "leading_window": "2007Q1",
+        "leading_detectable_at": "2007-03-31",
+        "leading_rule_false_positive_rate": 0.90625,
+        "lagging_metric": "brier_reliability",
+        "lagging_rule": "MON-06",
+        "lagging_window": "2007Q1",
+        "lagging_detectable_at": "2008-03-31",
+        "months_of_warning": 12.0,
+        "caveat": "rule MON-02 also fires on 91% of development-sample windows, where the model is by construction working. Its early firing is not evidence of detection; treat the warning it bought as zero until the rule is re-specified."
+      }
+    },
+    {
+      "model_id": "RISKOS_PD_002",
+      "model_version": "1.0.0",
+      "model_family": "lightgbm",
+      "development_sample_ends": "2006-12-31",
+      "windows": 64,
+      "first_window": "1999Q1",
+      "last_window": "2019Q4",
+      "max_score_psi": 0.16577789609186375,
+      "max_stress_score_psi": 0.011185839001835403,
+      "windows_psi_significant": 0,
+      "alerts_fired": 246,
+      "breaches": 149,
+      "breaches_out_of_sample": 104,
+      "suppressed": 0,
+      "rule_false_positive_rates": {
+        "MON-01": 0.09375,
+        "MON-02": 0.90625,
+        "MON-03": 0.875,
+        "MON-04": 0.125,
+        "MON-05": 0.0,
+        "MON-06": 0.4666666666666667
+      },
+      "detection_gap": {
+        "leading_metric": "max_feature_csi",
+        "leading_rule": "MON-02",
+        "leading_window": "2007Q1",
+        "leading_detectable_at": "2007-03-31",
+        "leading_rule_false_positive_rate": 0.90625,
+        "lagging_metric": "brier_reliability",
+        "lagging_rule": "MON-06",
+        "lagging_window": "2007Q1",
+        "lagging_detectable_at": "2008-03-31",
+        "months_of_warning": 12.0,
+        "caveat": "rule MON-02 also fires on 91% of development-sample windows, where the model is by construction working. Its early firing is not evidence of detection; treat the warning it bought as zero until the rule is re-specified."
+      }
+    }
+  ]
+}

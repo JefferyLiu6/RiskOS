@@ -1,0 +1,6 @@
+window,worst_feature,max_feature_csi,worst_feature_floored_bins,worst_feature_n_bins
+1999Q1,loan_age,12.404373315285838,10,11
+1999Q2,loan_age,10.411308908141281,9,11
+1999Q3,loan_age,8.830881526630687,8,11
+1999Q4,loan_age,7.1215803684126815,7,11
+2000Q1,loan_age,6.074367471823111,6,11

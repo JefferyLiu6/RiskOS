@@ -1,0 +1,161 @@
+# Phase 6 — ongoing monitoring thresholds and the alert rulebook.
+#
+# THIS FILE IS COMMITTED BEFORE THE MONITORING RUN. Same discipline as
+# conf/models.yaml: a threshold chosen after seeing the timeline is not a
+# threshold, it is a description of what happened dressed as a control.
+#
+# OSFI E-23 requires ongoing monitoring proportionate to model risk, with
+# defined triggers and defined owners. A monitoring report that produces a
+# number but names no threshold, no owner and no action is a dashboard, not a
+# control. Every rule below therefore carries all three.
+
+window:
+  # MON_004 (size floors) and MON_005 (frequency and lag).
+  # Quarterly. Monthly windows on this panel hold too few defaults for the
+  # observed rate to be readable; annual windows would have averaged 2008 away.
+  frequency: quarterly
+
+  # A window with fewer rows than this is measured but never alerted on: a PSI
+  # computed on a few hundred rows is dominated by sampling noise, and an alert
+  # a reviewer learns to ignore is worse than no alert.
+  min_rows_for_alert: 2000
+
+  # A window with fewer defaults than this reports discrimination and
+  # calibration as null rather than as a number. AUC on a handful of defaults
+  # is not an estimate of anything.
+  min_defaults_for_performance: 50
+
+reference:
+  # PSI and CSI are measured against the development sample, which is the
+  # population the model was fitted on and the only population it can claim to
+  # be calibrated for. Bins are fixed by this reference and never re-derived
+  # from the window under test.
+  split: train
+  n_bins: 10
+
+observability:
+  # The reason drift monitoring exists at all.
+  #
+  # The label is a 12-month forward default flag, so the outcome for an
+  # observation dated T is not known until T+12m. Performance monitoring is
+  # therefore structurally blind for a year: at any real reporting date, the
+  # most recent quarter whose AUC and observed/expected can be computed closed
+  # twelve months ago. Drift monitoring has no such lag, because it compares
+  # inputs and scores, which are known at scoring time.
+  #
+  # This is recorded as config rather than inferred from the label, so the lag
+  # is visible to a reviewer without reading the panel builder.
+  outcome_window_months: 12
+  performance_metrics_lag_months: 12
+
+rules:
+  # --- Leading indicators: available at scoring time, no outcome required. ---
+
+  - id: MON-01
+    metric: score_psi
+    scope: score distribution vs development sample
+    comparator: greater_than
+    warn: 0.10
+    breach: 0.25
+    severity_warn: medium
+    severity_breach: high
+    owner: model_owner
+    action: >-
+      Warn — investigate which score bands moved and whether the shift is
+      portfolio mix or model behaviour. Breach — the scored population is no
+      longer the population the model was calibrated on; escalate to second
+      line and open a redevelopment assessment.
+    basis: PSI_001
+
+  - id: MON-02
+    metric: max_feature_csi
+    scope: worst single input feature vs development sample
+    comparator: greater_than
+    warn: 0.10
+    breach: 0.25
+    severity_warn: low
+    severity_breach: medium
+    owner: model_owner
+    action: >-
+      Identify the feature and decide whether the shift is a data-supply change
+      (a vendor field changing coverage) or a genuine portfolio change. The two
+      have opposite remediations and the metric cannot tell them apart.
+    basis: PSI_001
+
+  - id: MON-03
+    metric: n_features_csi_significant
+    scope: count of inputs above the significant band
+    comparator: greater_than
+    warn: 0
+    breach: 2
+    severity_warn: low
+    severity_breach: medium
+    owner: model_owner
+    action: >-
+      One drifting input is a feature problem. Three at once is usually an
+      upstream data problem, and the first check is the ingest layer, not the
+      model.
+    basis: MON_007
+
+  # --- Lagging indicators: require the 12-month outcome window to have closed. ---
+
+  - id: MON-04
+    metric: observed_over_expected
+    scope: calibration on the closed outcome window
+    comparator: outside_band
+    warn: [0.80, 1.25]
+    breach: [0.50, 2.00]
+    severity_warn: medium
+    severity_breach: high
+    owner: model_owner
+    action: >-
+      Calibration is the dimension that converts directly into a money number:
+      ECL is PD x LGD x EAD, so a ratio of 2.0 understates the provision by
+      half. Warn — recalibrate at the next scheduled review. Breach — the
+      reported provision is materially wrong; notify finance and second line in
+      the same reporting period.
+    basis: MON_001
+
+  - id: MON-05
+    metric: gini
+    scope: discrimination on the closed outcome window
+    comparator: relative_decline_from_reference
+    warn: 0.10
+    breach: 0.25
+    severity_warn: medium
+    severity_breach: high
+    owner: model_owner
+    action: >-
+      Measured as a proportional fall from the development-sample Gini, not an
+      absolute floor, because what matters is whether the model still ranks as
+      well as it did when it was approved. Breach — ranking power has gone;
+      the model no longer supports the decisions it was approved for.
+    basis: MON_002
+
+  - id: MON-06
+    metric: brier_reliability
+    scope: reliability component of the Brier decomposition
+    comparator: relative_increase_from_reference
+    warn: 1.0
+    breach: 4.0
+    severity_warn: low
+    severity_breach: medium
+    owner: model_owner
+    action: >-
+      Reliability isolates miscalibration from the irreducible base-rate
+      variance that moves the headline Brier score whenever the default rate
+      moves. A rising reliability term with a flat Gini is the signature of a
+      model that still ranks but no longer predicts a level.
+    basis: MON_003
+
+escalation:
+  # Who sees what. Named here so the run can assert that every fired alert has
+  # a route, rather than leaving severity as a colour on a chart.
+  low: model_owner
+  medium: model_owner_and_second_line
+  high: second_line_and_model_risk_committee
+
+  # A breach standing unresolved for this long is itself reportable. The
+  # project cannot enforce a service level, but it can record one and report
+  # against it.
+  breach_response_days: 30

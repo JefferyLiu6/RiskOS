@@ -1,0 +1,11 @@
+borrower,scorecard_top_driver,scorecard_points,lgbm_top_driver,lgbm_shap,same_top_driver,top3_overlap
+0,number_of_borrowers,-11.66,number_of_borrowers,0.4198,true,0.667
+1,credit_score,-28.06,credit_score,1.0056,true,1.0
+2,original_loan_term,12.85,original_loan_term,-0.2831,true,0.667
+3,credit_score,-28.06,credit_score,1.0056,true,1.0
+4,credit_score,20.98,credit_score,-0.8252,true,0.667
+5,number_of_borrowers,-11.66,number_of_borrowers,0.4168,true,0.667
+6,credit_score,20.98,credit_score,-0.8948,true,1.0
+7,credit_score,20.98,credit_score,-0.6775,true,0.333
+8,original_ltv,-7.85,original_ltv,0.4684,true,0.333
+9,credit_score,20.98,credit_score,-0.705,true,1.0
