@@ -49,8 +49,11 @@ reports/*_files/
 # Local, machine-specific tool permissions
 .claude/settings.local.json
 
-# Personal interview preparation. Anchored to the root; never committed.
+# Personal interview preparation — keep outside the repo; never commit.
 /interview/
+
+# Empty / local scratch notebooks (analysis lives in src/ + reports/)
+/notebooks/
 
 # Coverage data
 .coverage

@@ -1,20 +1,20 @@
 # RiskOS — Model Validation Report
 
-**Generated:** 2026-09-13 from the pipeline artefacts  
+**Generated:** 2026-09-14 from the pipeline artefacts  
 **Models in scope:** RISKOS_PD_001 v1.0.0, RISKOS_PD_002 v1.0.0, RISKOS_HAZ_001 vn/a, RISKOS_LGD_001 vn/a  
 **Review type:** developer validation with simulated second-line review  
 **Author and reviewer:** project author (see §2 on independence)  
 
-> The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. The project applies IFRS 9 concepts and OSFI Guideline E-23 as a methodological and governance framework relevant to Canadian financial institutions. It does not represent a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance.
+> The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are out of scope. The project applies IFRS 9-style ECL measurement and common model-risk practices (inventory, findings, monitoring thresholds; themes also discussed in OSFI Guideline E-23). It is not a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance. Inventory 'approval' fields mean illustrative developer clearance by the project author, not an independent model-risk committee decision.
 
 ## 1. Executive summary
 
-**Decision.** RISKOS_PD_001 is approved with conditions. RISKOS_HAZ_001 is approved with conditions. RISKOS_LGD_001 is approved with conditions. No model in this inventory is approved without conditions, and none is approved for real lending, underwriting, capital or provisioning decisions.
+**Illustrative clearance (not an independent model approval).** RISKOS_PD_001 is recorded as approved with conditions. RISKOS_HAZ_001 is recorded as approved with conditions. RISKOS_LGD_001 is recorded as approved with conditions. Status values are developer clearance for this educational project. No model is cleared without conditions, and none is cleared for real lending, underwriting, capital, or provisioning.
 
-- **RISKOS_PD_001** (12-month PD scorecard (WOE logistic)): inventory status `in_use`, approval `approved_with_conditions`, review due 2027-08-31.
-- **RISKOS_PD_002** (12-month PD challenger (LightGBM)): inventory status `candidate`, approval `not_approved`.
-- **RISKOS_HAZ_001** (Discrete-time hazard with competing risks): inventory status `in_use`, approval `approved_with_conditions`, review due 2027-09-08.
-- **RISKOS_LGD_001** (Segment LGD with shrinkage): inventory status `in_use`, approval `approved_with_conditions`, review due 2027-09-08.
+- **RISKOS_PD_001** (12-month PD scorecard (WOE logistic)): inventory status `in_use`, clearance `approved_with_conditions`, review due 2027-08-31.
+- **RISKOS_PD_002** (12-month PD challenger (LightGBM)): inventory status `candidate`, clearance `not_approved`.
+- **RISKOS_HAZ_001** (Discrete-time hazard with competing risks): inventory status `in_use`, clearance `approved_with_conditions`, review due 2027-09-08.
+- **RISKOS_LGD_001** (Segment LGD with shrinkage): inventory status `in_use`, clearance `approved_with_conditions`, review due 2027-09-08.
 
 **The number.** Portfolio ECL as at the last training date is $34.0M on $15.91B of exposure, a coverage ratio of 0.214%. Probability-weighted across three macro scenarios it is $60.1M. The severe-stress scenario alone spans $45.6M to $236.9M at 95% confidence, a factor of 5.2 end to end. That width is the correct representation of what the estimation sample can support, not a presentational weakness.
 
@@ -27,13 +27,13 @@
 
 ## 2. Scope, independence, and intended use
 
-**Scope.** The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. The project applies IFRS 9 concepts and OSFI Guideline E-23 as a methodological and governance framework relevant to Canadian financial institutions. It does not represent a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance.
+**Scope.** The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are out of scope. The project applies IFRS 9-style ECL measurement and common model-risk practices (inventory, findings, monitoring thresholds; themes also discussed in OSFI Guideline E-23). It is not a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance. Inventory 'approval' fields mean illustrative developer clearance by the project author, not an independent model-risk committee decision.
 
-**Independence.** This project is built by one person. It cannot claim the organisational independence OSFI E-23 expects between model development and model validation. The review artefact is therefore a *developer validation with simulated second-line review*: the same discipline of pre-committed rules, a findings register populated at discovery, approvals with conditions and review dates, and reconciliation of the inventory against what is on disk — without the independent reviewer. Every tier-1 approval in §12 records this as a condition, not a waiver.
+**Independence.** This project is built by one person. It cannot claim organisational independence between model development and model validation. The review artefact is therefore a *developer validation with simulated second-line review*: pre-committed rules, a findings register populated at discovery, clearance conditions and review dates, and reconciliation of the inventory against what is on disk — without an independent reviewer. Every tier-1 clearance in §12 records that gap as a condition, not a waiver.
 
 **Intended use.** Illustrative and educational. Not for real lending or underwriting decisions, not for regulatory capital or provisioning, and not applicable to any Canadian portfolio without redevelopment on Canadian data.
 
-**Risk tiering.** Every model that feeds the ECL calculation is tier 1, because the ECL figure is the one a reader would be tempted to quote.
+**Risk tiering.** Every model that feeds the ECL calculation is treated as tier 1 here, because the ECL figure is the one a reader would be tempted to quote.
 
 | Tier | Definition |
 | --- | --- |
@@ -390,15 +390,15 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 | RISKOS_HAZ_001 | cloglog_discrete_hazard | in_use | 1 | approved_with_conditions | 2027-09-08 | none | F-008, F-011, F-014 |
 | RISKOS_LGD_001 | segment_mean_shrunk | in_use | 1 | approved_with_conditions | 2027-09-08 | none | none |
 
-**RISKOS_PD_001 — conditions of approval.** Approved for illustrative use only, on the explicit condition that the calibration failure recorded as F-005 is stated wherever an output is reported. A developer validation with a simulated second-line review is not independent validation, and tier 1 would ordinarily require the latter; that gap is a limitation of this review, recorded here rather than waived.
+**RISKOS_PD_001 — clearance conditions.** Cleared by the project author for illustrative use only, on the condition that the calibration failure in F-005 is stated wherever an output is reported. This is not independent validation; tier 1 would ordinarily require that. The gap is recorded here rather than waived.
 
-**RISKOS_PD_002 — conditions of approval.** An artefact now exists (F-018 remediated) and the model is monitored on the same rulebook as RISKOS_PD_001, but it remains not approved. A model that can be loaded is not thereby validated, and nothing in this project has performed the independent validation a tier 1 rating would require. Approval would also have to address F-006: the rubric's own calibration dimension scores this model 0.062 out of 1.0.
+**RISKOS_PD_002 — clearance conditions.** An artefact now exists (F-018 remediated) and the model is monitored on the same rulebook as RISKOS_PD_001, but it remains not cleared for use. A loadable artefact is not a validated model. Independent validation has not been performed. Clearance would also have to address F-006: the rubric's calibration dimension scores this model 0.062 out of 1.0.
 
-**RISKOS_HAZ_001 — conditions of approval.** Approved for illustrative use with F-008 and F-014 stated alongside any lifetime figure. NOT currently monitored: no rule in conf/monitoring.yaml applies to it, which is a gap against its tier and is reported by reconciliation rather than left implicit.
+**RISKOS_HAZ_001 — clearance conditions.** Cleared by the project author for illustrative use with F-008 and F-014 stated alongside any lifetime figure. NOT currently monitored: no rule in conf/monitoring.yaml applies to it, which is a gap against its tier and is reported by reconciliation rather than left implicit.
 
-**RISKOS_LGD_001 — conditions of approval.** Approved with the denominator and bounding sensitivities reported alongside any LGD figure. Not monitored, same gap as RISKOS_HAZ_001.
+**RISKOS_LGD_001 — clearance conditions.** Cleared by the project author with the denominator and bounding sensitivities reported alongside any LGD figure. Not monitored, same gap as RISKOS_HAZ_001.
 
-**Reconciliation** (`riskos registry`) checks the inventory against the artefacts on disk and the findings register: a model in use with no loadable artefact, an artefact nobody inventoried, a bundle fitted against changed configuration, a cited finding that does not exist, an open high-severity finding absent from a model's limitations, a tier-1 model with no monitoring rule, an approval past its review date.
+**Reconciliation** (`riskos registry`) checks the inventory against the artefacts on disk and the findings register: a model in use with no loadable artefact, an artefact nobody inventoried, a bundle fitted against changed configuration, a cited finding that does not exist, an open high-severity finding absent from a model's limitations, a tier-1 model with no monitoring rule, a clearance past its review date.
 
 | Severity | Check | Model | Detail |
 | --- | --- | --- | --- |
@@ -407,7 +407,7 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 
 The first reconciliation returned a high-severity discrepancy: the rubric-selected model had no scoring-ready artefact, so every downstream figure had come from the runner-up (F-018, remediated). The remaining discrepancies are genuine gaps, reported rather than closed.
 
-**Serving.** The scoring service takes no model path. It serves the model the inventory records as in use, refuses a candidate, an unapproved or lapsed approval, or an artefact whose manifest disagrees with the inventory, and returns the model id, version, approval status, conditions and recorded limitations with every score.
+**Serving.** The local scoring service does not take an arbitrary model path. It loads the model the inventory marks as in use, refuses a candidate, a missing/lapsed clearance, or an artefact whose manifest disagrees with the inventory, and returns model id, version, clearance status, conditions, and recorded limitations with each score. This is a demo control surface, not a production model store.
 
 ## 13. Findings register
 

@@ -132,17 +132,22 @@ Four claims, each of which the later chapters have to earn with evidence:
    the question is what it does when the world changes.
 3. **A validation with no findings is not credible.** This one carries a
    findings register, populated at discovery.
-4. **Approval with conditions, not a pretence of no limitations.** Every
-   approval names its conditions and its review date.
+4. **Clearance with conditions, not a pretence of no limitations.** Inventory
+   clearance fields name conditions and a review date. They mean developer
+   clearance for this educational project — not an independent model-risk
+   committee approval.
 
 ### Scope statement
 
 > The underlying portfolio is U.S. residential mortgage data, because comparable
-> public Canadian loan-level default and loss data is not available. The project
-> applies IFRS 9 concepts and OSFI Guideline E-23 as a methodological and
-> governance framework relevant to Canadian financial institutions. It does not
-> represent a regulatory implementation, does not reproduce any institution's ECL
-> system, and makes no claim of OSFI compliance.
+> public Canadian loan-level default and loss data is not available.
+> Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are
+> out of scope. The project applies IFRS 9-style ECL measurement and common
+> model-risk practices (inventory, findings, monitoring thresholds; themes also
+> discussed in OSFI Guideline E-23). It is not a regulatory implementation, does
+> not reproduce any institution's ECL system, and makes no claim of OSFI
+> compliance. Inventory "approval" fields mean illustrative developer clearance
+> by the project author, not an MRC decision.
 
 ---
 

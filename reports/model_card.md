@@ -1,8 +1,8 @@
 # RiskOS — Model Cards
 
-Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests, the Phase 4 comparison table and the findings register.
+Generated 2026-09-14 from governance/model_inventory.yaml, the bundle manifests, the Phase 4 comparison table and the findings register.
 
-> The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. The project applies IFRS 9 concepts and OSFI Guideline E-23 as a methodological and governance framework relevant to Canadian financial institutions. It does not represent a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance.
+> The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are out of scope. The project applies IFRS 9-style ECL measurement and common model-risk practices (inventory, findings, monitoring thresholds; themes also discussed in OSFI Guideline E-23). It is not a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance. Inventory 'approval' fields mean illustrative developer clearance by the project author, not an independent model-risk committee decision.
 
 ## RISKOS_PD_001 — 12-month PD scorecard (WOE logistic)
 
@@ -12,8 +12,8 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 | Inventory status | in_use |
 | Tier | 1 — Feeds ECL directly, which is a reported financial figure. Not autonomous — nothing in this project acts on a customer — but materiality alone is sufficient for tier 1 under the rubric above. |
 | Owner | project_author |
-| Approval | approved_with_conditions |
-| Approved on / review due | 2026-08-31 / 2027-08-31 |
+| Clearance | approved_with_conditions |
+| Cleared on / review due | 2026-08-31 / 2027-08-31 |
 | Monitored by | MON-01, MON-02, MON-03, MON-04, MON-05, MON-06 |
 | Version | 1.0.0 |
 | Training window | 1999Q1-2006Q4 |
@@ -27,7 +27,7 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 
 **Prohibited use.** Not for real lending or underwriting decisions, not for regulatory capital or provisioning, and not applicable to any Canadian portfolio without redevelopment on Canadian data. Not valid outside the origination vintages and product type it was fitted on, and per F-005 not reliable for level estimation under regime change at all.
 
-**Conditions of approval.** Approved for illustrative use only, on the explicit condition that the calibration failure recorded as F-005 is stated wherever an output is reported. A developer validation with a simulated second-line review is not independent validation, and tier 1 would ordinarily require the latter; that gap is a limitation of this review, recorded here rather than waived.
+**Clearance conditions.** Cleared by the project author for illustrative use only, on the condition that the calibration failure in F-005 is stated wherever an output is reported. This is not independent validation; tier 1 would ordinarily require that. The gap is recorded here rather than waived.
 
 **Performance, uncalibrated.**
 
@@ -55,8 +55,8 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 | Inventory status | candidate |
 | Tier | 1 — Same use and same materiality as RISKOS_PD_001. Tier does not fall because a model is a challenger; a challenger selected by the rubric is a model awaiting deployment, not an experiment. |
 | Owner | project_author |
-| Approval | not_approved |
-| Approved on / review due | — / — |
+| Clearance | not_approved |
+| Cleared on / review due | — / — |
 | Monitored by | MON-01, MON-02, MON-03, MON-04, MON-05, MON-06 |
 | Version | 1.0.0 |
 | Training window | 1999Q1-2006Q4 |
@@ -70,7 +70,7 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 
 **Prohibited use.** As RISKOS_PD_001, and additionally not to be reported as the model behind any published figure until a scoring-ready artefact exists and has been monitored. See F-018.
 
-**Conditions of approval.** An artefact now exists (F-018 remediated) and the model is monitored on the same rulebook as RISKOS_PD_001, but it remains not approved. A model that can be loaded is not thereby validated, and nothing in this project has performed the independent validation a tier 1 rating would require. Approval would also have to address F-006: the rubric's own calibration dimension scores this model 0.062 out of 1.0.
+**Clearance conditions.** An artefact now exists (F-018 remediated) and the model is monitored on the same rulebook as RISKOS_PD_001, but it remains not cleared for use. A loadable artefact is not a validated model. Independent validation has not been performed. Clearance would also have to address F-006: the rubric's calibration dimension scores this model 0.062 out of 1.0.
 
 **Performance, uncalibrated.**
 
@@ -97,8 +97,8 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 | Inventory status | in_use |
 | Tier | 1 — Lifetime PD is the stage-2 ECL input and drives the staging test itself, so an error moves both the provision and which loans sit in which stage. |
 | Owner | project_author |
-| Approval | approved_with_conditions |
-| Approved on / review due | 2026-09-08 / 2027-09-08 |
+| Clearance | approved_with_conditions |
+| Cleared on / review due | 2026-09-08 / 2027-09-08 |
 | Monitored by | none |
 | Artefact | models/hazard_fit.json |
 
@@ -108,7 +108,7 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 
 **Prohibited use.** Not to be projected beyond the fitted age range without stating the extrapolation. Per F-014 the lifetime projection lacks a transition model, so a loan's path between delinquency states is not modelled.
 
-**Conditions of approval.** Approved for illustrative use with F-008 and F-014 stated alongside any lifetime figure. NOT currently monitored: no rule in conf/monitoring.yaml applies to it, which is a gap against its tier and is reported by reconciliation rather than left implicit.
+**Clearance conditions.** Cleared by the project author for illustrative use with F-008 and F-014 stated alongside any lifetime figure. NOT currently monitored: no rule in conf/monitoring.yaml applies to it, which is a gap against its tier and is reported by reconciliation rather than left implicit.
 
 **Limitations (findings register).**
 
@@ -126,8 +126,8 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 | Inventory status | in_use |
 | Tier | 1 — Multiplies directly into ECL. A segment LGD that is wrong by 10 points moves the provision by the same proportion as a PD error of the same size. |
 | Owner | project_author |
-| Approval | approved_with_conditions |
-| Approved on / review due | 2026-09-08 / 2027-09-08 |
+| Clearance | approved_with_conditions |
+| Cleared on / review due | 2026-09-08 / 2027-09-08 |
 | Monitored by | none |
 | Artefact | reports/figures/lgd_segments.csv |
 
@@ -137,4 +137,4 @@ Generated 2026-09-13 from governance/model_inventory.yaml, the bundle manifests,
 
 **Prohibited use.** Not a loan-level loss forecast. Segment means with shrinkage describe a group, and applying one to an individual property overstates what the estimate supports.
 
-**Conditions of approval.** Approved with the denominator and bounding sensitivities reported alongside any LGD figure. Not monitored, same gap as RISKOS_HAZ_001.
+**Clearance conditions.** Cleared by the project author with the denominator and bounding sensitivities reported alongside any LGD figure. Not monitored, same gap as RISKOS_HAZ_001.

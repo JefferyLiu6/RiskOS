@@ -4,7 +4,7 @@
 obtain future conditional PDs by repeating today's 12-month number, and the
 empirical seasoning curve shows why: the monthly default hazard rises from
 0.00018 in months 0-6 to 0.00145 in months 37-60, then falls back to 0.00100.
-An interviewer asking where the year-five marginal PD came from must not
+A reviewer asking where the year-five marginal PD came from must not
 discover the answer is "year one, repeated".
 
 Specification:

@@ -29,11 +29,14 @@ from riskos.report.sources import Sources
 
 SCOPE_STATEMENT = (
     "The underlying portfolio is U.S. residential mortgage data, because comparable "
-    "public Canadian loan-level default and loss data is not available. The project "
-    "applies IFRS 9 concepts and OSFI Guideline E-23 as a methodological and governance "
-    "framework relevant to Canadian financial institutions. It does not represent a "
-    "regulatory implementation, does not reproduce any institution's ECL system, and "
-    "makes no claim of OSFI compliance."
+    "public Canadian loan-level default and loss data is not available. Canadian-specific "
+    "products (for example CMHC-insured mortgages and HELOCs) are out of scope. The "
+    "project applies IFRS 9-style ECL measurement and common model-risk practices "
+    "(inventory, findings, monitoring thresholds; themes also discussed in OSFI "
+    "Guideline E-23). It is not a regulatory implementation, does not reproduce any "
+    "institution's ECL system, and makes no claim of OSFI compliance. Inventory "
+    "'approval' fields mean illustrative developer clearance by the project author, "
+    "not an independent model-risk committee decision."
 )
 
 # Inventory family -> the model label used in the Phase 4 comparison tables.
@@ -110,21 +113,22 @@ def executive_summary(s: Sources) -> str:
     for m in inv["models"]:
         a = m["approval"]
         decisions.append(
-            f"- **{m['id']}** ({m['name']}): inventory status `{m['status']}`, approval "
-            f"`{a['status']}`"
+            f"- **{m['id']}** ({m['name']}): inventory status `{m['status']}`, "
+            f"clearance `{a['status']}`"
             + (f", review due {a['review_due']}" if a.get("review_due") else "")
             + "."
         )
 
     blocks = [
-        "**Decision.** "
+        "**Illustrative clearance (not an independent model approval).** "
         + " ".join(
-            f"{m['id']} is {m['approval']['status'].replace('_', ' ')}."
+            f"{m['id']} is recorded as {m['approval']['status'].replace('_', ' ')}."
             for m in inv["models"]
             if m["status"] in ("in_use", "approved")
         )
-        + " No model in this inventory is approved without conditions, and none is "
-        "approved for real lending, underwriting, capital or provisioning decisions.",
+        + " Status values are developer clearance for this educational project. "
+        "No model is cleared without conditions, and none is cleared for real lending, "
+        "underwriting, capital, or provisioning.",
         "\n".join(decisions),
     ]
 
@@ -208,18 +212,18 @@ def scope(s: Sources) -> str:
     return section(
         "2. Scope, independence, and intended use",
         f"**Scope.** {SCOPE_STATEMENT}",
-        "**Independence.** This project is built by one person. It cannot claim the "
-        "organisational independence OSFI E-23 expects between model development and model "
-        "validation. The review artefact is therefore a *developer validation with simulated "
-        "second-line review*: the same discipline of pre-committed rules, a findings register "
-        "populated at discovery, approvals with conditions and review dates, and reconciliation "
-        "of the inventory against what is on disk — without the independent reviewer. Every "
-        "tier-1 approval in §12 records this as a condition, not a waiver.",
+        "**Independence.** This project is built by one person. It cannot claim organisational "
+        "independence between model development and model validation. The review artefact is "
+        "therefore a *developer validation with simulated second-line review*: pre-committed "
+        "rules, a findings register populated at discovery, clearance conditions and review "
+        "dates, and reconciliation of the inventory against what is on disk — without an "
+        "independent reviewer. Every tier-1 clearance in §12 records that gap as a condition, "
+        "not a waiver.",
         "**Intended use.** Illustrative and educational. Not for real lending or underwriting "
         "decisions, not for regulatory capital or provisioning, and not applicable to any "
         "Canadian portfolio without redevelopment on Canadian data.",
-        "**Risk tiering.** Every model that feeds the ECL calculation is tier 1, because the ECL "
-        "figure is the one a reader would be tempted to quote.",
+        "**Risk tiering.** Every model that feeds the ECL calculation is treated as tier 1 "
+        "here, because the ECL figure is the one a reader would be tempted to quote.",
         tiers,
     )
 
@@ -1043,13 +1047,13 @@ def governance(s: Sources) -> str:
     for m in inv["models"]:
         cond = squash(m["approval"].get("conditions", "")).strip()
         if cond:
-            blocks.append(f"**{m['id']} — conditions of approval.** {cond}")
+            blocks.append(f"**{m['id']} — clearance conditions.** {cond}")
     blocks.append(
         "**Reconciliation** (`riskos registry`) checks the inventory against the artefacts on disk "
         "and the findings register: a model in use with no loadable artefact, an artefact nobody "
         "inventoried, a bundle fitted against changed configuration, a cited finding that does not "
         "exist, an open high-severity finding absent from a model's limitations, a tier-1 model "
-        "with no monitoring rule, an approval past its review date."
+        "with no monitoring rule, a clearance past its review date."
     )
     if rec is not None:
         if rec.height:
@@ -1073,10 +1077,11 @@ def governance(s: Sources) -> str:
             "rather than closed."
         )
     blocks.append(
-        "**Serving.** The scoring service takes no model path. It serves the model the inventory "
-        "records as in use, refuses a candidate, an unapproved or lapsed approval, or an artefact "
-        "whose manifest disagrees with the inventory, and returns the model id, version, approval "
-        "status, conditions and recorded limitations with every score."
+        "**Serving.** The local scoring service does not take an arbitrary model path. It loads "
+        "the model the inventory marks as in use, refuses a candidate, a missing/lapsed "
+        "clearance, or an artefact whose manifest disagrees with the inventory, and returns "
+        "model id, version, clearance status, conditions, and recorded limitations with each "
+        "score. This is a demo control surface, not a production model store."
     )
     return section("12. Governance: inventory, reconciliation, and serving", *blocks)
 

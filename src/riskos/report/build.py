@@ -84,9 +84,9 @@ def build_model_card(s: Sources) -> str:
             ["Inventory status", m["status"]],
             ["Tier", f"{m['tier']} — {squash(m['tier_rationale'])}"],
             ["Owner", m["owner"]],
-            ["Approval", a["status"]],
+            ["Clearance", a["status"]],
             [
-                "Approved on / review due",
+                "Cleared on / review due",
                 f"{text(a.get('approved_on'))} / {text(a.get('review_due'))}",
             ],
             ["Monitored by", ", ".join(m.get("monitored_by") or []) or "none"],
@@ -108,7 +108,7 @@ def build_model_card(s: Sources) -> str:
         out += [f"**Intended use.** {squash(m['intended_use'])}", ""]
         out += [f"**Prohibited use.** {squash(m['prohibited_use'])}", ""]
         if a.get("conditions"):
-            out += [f"**Conditions of approval.** {squash(a['conditions'])}", ""]
+            out += [f"**Clearance conditions.** {squash(a['conditions'])}", ""]
         label = sections.FAMILY_LABEL.get(m["family"])
         if label:
             out += ["**Performance, uncalibrated.**", "", _performance_rows(s, label), ""]

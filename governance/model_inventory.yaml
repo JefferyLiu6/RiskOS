@@ -1,18 +1,18 @@
-# Model inventory (OSFI E-23, model identification and inventory).
+# Model inventory.
 #
-# An inventory that is not reconciled against what is actually on disk is a
-# spreadsheet. `uv run riskos registry` reads this file, reads the artefacts in
-# models/, reads the findings register, and reports every place the three
-# disagree — a model recorded here with no deployable artefact, an artefact with
-# no inventory entry, a bundle built against configuration that has since
-# changed, an open high-severity finding absent from a model's recorded
-# limitations, or an approval past its review date.
+# Status / approval fields here are *illustrative developer clearance* for this
+# educational project — not an independent model-risk committee (MRC) decision
+# and not a claim of institutional approval.
 #
-# This file holds the JUDGEMENTS: what each model is for, who owns it, what tier
-# it carries, what it must not be used for. Everything derivable from an
-# artefact — feature list, training window, row counts, config fingerprints — is
-# read from the artefact at reconciliation time and is deliberately NOT copied
-# here, because a copied fact is a fact that can go stale silently.
+# `uv run riskos registry` reconciles this file against artefacts in models/ and
+# the findings register: a model recorded here with no deployable artefact, an
+# artefact with no inventory entry, a bundle built against configuration that
+# has since changed, an open high-severity finding absent from a model's
+# recorded limitations, or a clearance past its review date.
+#
+# This file holds JUDGEMENTS: purpose, owner, tier, intended/prohibited use.
+# Feature lists, training windows, row counts, and config fingerprints are read
+# from artefacts at reconciliation time and are deliberately not copied here.
 
 schema:
   required_fields:
@@ -91,12 +91,10 @@ models:
       approved_by: project_author
       review_due: 2027-08-31
       conditions: >-
-        Approved for illustrative use only, on the explicit condition that the
-        calibration failure recorded as F-005 is stated wherever an output is
-        reported. A developer validation with a simulated second-line review is
-        not independent validation, and tier 1 would ordinarily require the
-        latter; that gap is a limitation of this review, recorded here rather
-        than waived.
+        Cleared by the project author for illustrative use only, on the condition
+        that the calibration failure in F-005 is stated wherever an output is
+        reported. This is not independent validation; tier 1 would ordinarily
+        require that. The gap is recorded here rather than waived.
 
     limitations: [F-004, F-005, F-015, F-018]
 
@@ -131,11 +129,10 @@ models:
       review_due: null
       conditions: >-
         An artefact now exists (F-018 remediated) and the model is monitored on
-        the same rulebook as RISKOS_PD_001, but it remains not approved. A model
-        that can be loaded is not thereby validated, and nothing in this project
-        has performed the independent validation a tier 1 rating would require.
-        Approval would also have to address F-006: the rubric's own calibration
-        dimension scores this model 0.062 out of 1.0.
+        the same rulebook as RISKOS_PD_001, but it remains not cleared for use.
+        A loadable artefact is not a validated model. Independent validation has
+        not been performed. Clearance would also have to address F-006: the
+        rubric's calibration dimension scores this model 0.062 out of 1.0.
 
     limitations: [F-006, F-007, F-018]
 
@@ -169,8 +166,8 @@ models:
       approved_by: project_author
       review_due: 2027-09-08
       conditions: >-
-        Approved for illustrative use with F-008 and F-014 stated alongside any
-        lifetime figure. NOT currently monitored: no rule in
+        Cleared by the project author for illustrative use with F-008 and F-014
+        stated alongside any lifetime figure. NOT currently monitored: no rule in
         conf/monitoring.yaml applies to it, which is a gap against its tier and
         is reported by reconciliation rather than left implicit.
 
@@ -205,7 +202,8 @@ models:
       approved_by: project_author
       review_due: 2027-09-08
       conditions: >-
-        Approved with the denominator and bounding sensitivities reported
-        alongside any LGD figure. Not monitored, same gap as RISKOS_HAZ_001.
+        Cleared by the project author with the denominator and bounding
+        sensitivities reported alongside any LGD figure. Not monitored, same
+        gap as RISKOS_HAZ_001.
 
     limitations: []
