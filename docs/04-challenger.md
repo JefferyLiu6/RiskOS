@@ -228,7 +228,7 @@ communication-design advantage, not a mathematical one.**
 
 ---
 
-## 7. Likely interview questions
+## 7. Questions a reviewer would ask
 
 **"How did you choose between the models?"**
 > A weighted rubric committed to config before the challenger was fitted —

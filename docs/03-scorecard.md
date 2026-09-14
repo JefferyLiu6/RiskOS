@@ -210,7 +210,7 @@ This is the payoff for chasing a suspicious number instead of shipping it.
 
 ---
 
-## 5. Likely interview questions
+## 5. Questions a reviewer would ask
 
 **"Walk me through your model."**
 > WOE scorecard — logistic regression on optimally binned features. 27

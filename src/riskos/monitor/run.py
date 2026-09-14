@@ -320,6 +320,11 @@ def run(cfg: MonitoringConfig | None = None, as_at: date | None = None) -> dict[
     # fired rather than reconciling one file per model.
     pl.concat([r.pop("_register") for r in per_model]).write_csv(GOVERNANCE / "alert_register.csv")
 
+    # The one-picture exhibit, regenerated from the CSVs just written.
+    from riskos.monitor import plots
+
+    plots.from_artefacts(ARTIFACTS)
+
     report: dict[str, Any] = {
         "reference_split": cfg.reference.split,
         "rules_evaluated": len(cfg.rules),

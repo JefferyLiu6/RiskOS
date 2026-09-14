@@ -60,7 +60,7 @@ variable**, so getting it wrong invalidates the entire project:
 | `16` | Reperforming loan securitizations | **No** — a funding event |
 | `96` | Confirmed Underwriting/Servicing Defect | **Excluded entirely** |
 
-Three things here are worth being able to explain cold:
+Three things here need to be stated precisely:
 
 **Prepayment is not default, and it is not "good" either.** A borrower who
 refinances away is *censored* — you stop observing them. Treating prepayment as
@@ -118,7 +118,7 @@ so they cannot drift apart. The layout is version-stamped to
 *"General User Guide, Release 47, July 2026"*, and ingest refuses to run without
 that stamp.
 
-**Why this matters in an interview:** the layout changes between releases. A
+**Why this matters:** the layout changes between releases. A
 hardcoded parser silently mis-assigns columns when the file gains a field — and
 mis-assigned columns produce a model that trains fine and is completely wrong.
 Every field was verified position-by-position against a real record before being
@@ -150,7 +150,7 @@ no analysis is treated as a project-level failure.
 
 ---
 
-## 4. The bug worth telling in an interview
+## 4. The bug worth recording
 
 The end-to-end pipeline test passed. Then the first run on real data failed
 Pandera validation with:
@@ -172,7 +172,7 @@ that it exists in both layouts, and — the part that matters — **rewrite the 
 fixture so the key sits in the last position**, mirroring reality. A fixture
 with the key first would have hidden this class of bug forever.
 
-**Why it's a good story.** It's a concrete case of a test passing while being
+**Why it matters.** It's a concrete case of a test passing while being
 structurally unrepresentative of production data. The lesson isn't "write more
 tests", it's *"make fixtures adversarial to your assumptions."* And note the
 failure mode: had the key been a genuinely unique column, this would never have
@@ -211,7 +211,7 @@ driven by low rates. If prepayment didn't spike there, something would be wrong.
 
 ---
 
-## 6. Likely interview questions
+## 6. Questions a reviewer would ask
 
 **"Walk me through your data pipeline."**
 > 6 GB of pipe-delimited text, two files per vintage year — one row per loan at

@@ -971,6 +971,11 @@ def monitoring(s: Sources) -> str:
             rows,
         )
     )
+    if (s.figures / "monitoring_blind_spot.png").exists():
+        blocks.append(
+            "![Calibration collapses through 2008 while score PSI never leaves the stable band]"
+            "(figures/monitoring_blind_spot.png)"
+        )
     blocks.append(
         "**F-015.** Score PSI stays an order of magnitude inside the stable band through the "
         "entire crisis, for both families, while calibration collapses. PSI compares input and "

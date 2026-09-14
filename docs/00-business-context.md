@@ -3,10 +3,10 @@
 *Read this first. Everything else in the repo is a technical answer to a problem
 stated here.*
 
-You are an AI engineer. You already know how to build models. What a bank
-interview is testing is whether you understand **what the number is for, who is
-accountable for it, and what happens when it is wrong.** This document is the
-background you need to answer that.
+Building the models is the smaller part of this problem. The larger part is
+understanding **what the number is for, who is accountable for it, and what
+happens when it is wrong.** This document is that background; the technical
+chapters that follow are answers to it.
 
 ---
 
@@ -90,8 +90,8 @@ A single point estimate isn't acceptable; you owe a probability-weighted answer.
 
 ## 3. Who is accountable — the three lines of defence
 
-This is the org chart question, and candidates from a pure ML background
-routinely fluff it.
+This is the organisational question, and it is the one a pure ML background
+leaves least prepared for.
 
 | Line | Who | Role |
 | --- | --- | --- |
@@ -115,71 +115,54 @@ ongoing monitoring, and decommissioning — plus a **model inventory** and a
 > **Honest limitation, stated up front.** This project is built by one person, so
 > it cannot claim genuine organisational independence. The review artifact is
 > called a *developer validation with simulated second-line review*, and that
-> limitation is recorded in the report. In an interview, saying this
-> unprompted lands far better than pretending otherwise.
+> limitation is recorded in the report rather than glossed.
 
 ---
 
-## 4. Why this specific project
+## 4. What this project is built to demonstrate
 
-Your existing portfolio proves you can build AI systems. It proves nothing about
-finance. This project is engineered to close exactly that gap, and to let you
-tell four stories:
+Four claims, each of which the later chapters have to earn with evidence:
 
-1. **"I can show you where a model with better AUC was the worse risk model."**
-   Discrimination (ranking borrowers correctly) and calibration (getting the
-   probability level right) are different things. ECL is a **money** number, so
-   a model that ranks perfectly but predicts 2% when the truth is 4% will halve
-   your provision. Gradient boosting typically wins on AUC and loses on
-   calibration under regime change. That trade-off is the heart of the project.
+1. **A model with better AUC can be the worse risk model.** Discrimination
+   (ranking borrowers correctly) and calibration (getting the probability level
+   right) are different things. ECL is a **money** number, so a model that ranks
+   perfectly but predicts 2% when the truth is 4% halves the provision.
+2. **Behaviour under regime change is the test that matters.** Train on
+   1999–2006, then watch the model meet 2008. Any model looks fine in-sample;
+   the question is what it does when the world changes.
+3. **A validation with no findings is not credible.** This one carries a
+   findings register, populated at discovery.
+4. **Approval with conditions, not a pretence of no limitations.** Every
+   approval names its conditions and its review date.
 
-2. **"Here's what happened when I stress-tested and backtested against the
-   crisis."** Train on 1999–2006, then watch it meet 2008. Any model looks fine
-   in-sample; the question is what it does when the world changes.
-
-3. **"Here are material weaknesses I found in my own model."** A validation
-   report with no findings is not credible. This one has a findings register.
-
-4. **"Here's why I approved it *with conditions* rather than pretending it had
-   no limitations."** This is the one that stops it looking like a student
-   project.
-
-### Scope statement — say this before anyone asks
+### Scope statement
 
 > The underlying portfolio is U.S. residential mortgage data, because comparable
 > public Canadian loan-level default and loss data is not available. The project
 > applies IFRS 9 concepts and OSFI Guideline E-23 as a methodological and
 > governance framework relevant to Canadian financial institutions. It does not
-> represent a regulatory implementation, does not reproduce any institution's
-> ECL system, and makes no claim of OSFI compliance.
-
-Volunteering this signals more domain awareness than getting caught out by it
-costs.
+> represent a regulatory implementation, does not reproduce any institution's ECL
+> system, and makes no claim of OSFI compliance.
 
 ---
 
-## 5. Where an AI engineer actually adds value here
+## 5. Where engineering discipline adds value here
 
-Do not walk in positioning yourself as a credit risk veteran. Position yourself
-as an engineer who can make risk modelling **reproducible, testable, and
-governable** — which is genuinely where a lot of bank teams are weak.
-
-Concrete things this repo demonstrates that a traditional risk team often lacks:
+Risk teams know the mathematics. Where a modelling function is most often weak
+is in making that mathematics **reproducible, testable, and governable**, and
+that is the gap this repository is built around:
 
 - Config-driven pipelines with **no magic numbers in code** (`conf/`)
 - **Schema-as-code** validation that fails loudly rather than silently coercing
 - Assumption registers **enforced by tests** — change a constant without
-  updating its register entry and CI fails
+  updating its register entry and the build fails
 - Leakage prevention as an **executable test**, not a code-review convention
-- Governance artifacts as **structured data** (`governance/*.yaml`), not prose
-  buried in a Word document
-
-The pitch: *"Risk teams know the mathematics. I make it reproducible and hard to
-get silently wrong."*
+- Governance artifacts as **structured data** (`governance/*.yaml`), reconciled
+  against what is actually on disk, not prose in a document
 
 ---
 
-## 6. Vocabulary to have cold
+## 6. Vocabulary
 
 | Term | One-line meaning |
 | --- | --- |

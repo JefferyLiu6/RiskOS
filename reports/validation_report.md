@@ -356,6 +356,8 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 | RISKOS_PD_001 | woe_scorecard | 64 | 0.0113 | 262 | 105 | 12.0 | MON-02 |
 | RISKOS_PD_002 | lightgbm | 64 | 0.0112 | 246 | 104 | 12.0 | MON-02 |
 
+![Calibration collapses through 2008 while score PSI never leaves the stable band](figures/monitoring_blind_spot.png)
+
 **F-015.** Score PSI stays an order of magnitude inside the stable band through the entire crisis, for both families, while calibration collapses. PSI compares input and output distributions; what changed in 2008 was the mapping from characteristics to default, which no input-side comparison can see. Drift monitoring gave zero months of warning on the failure it exists to catch.
 
 **Rule false-positive rates on the development sample.** Every in-sample window is one on which the model is by construction working, so a firing there is a false positive. Thresholds were left as committed and the rates published rather than tuned (F-016, F-017).

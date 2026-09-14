@@ -361,6 +361,7 @@ rows.
 | `reports/figures/monitoring_<model>_performance_timeline.csv` | Discrimination and calibration, with maturity dates |
 | `reports/figures/monitoring_<model>_performance_visible.csv` | The timeline as of a chosen reporting date |
 | `reports/figures/monitoring_<model>_rule_false_positives.csv` | Per-rule in-sample firing rate |
+| `reports/figures/monitoring_blind_spot.png` | The exhibit: calibration collapsing above a drift metric that never moves |
 | `reports/figures/monitoring_summary.json` | Run summary and the detection gap, per model |
 | `governance/alert_register.csv` | Every rule firing, with model, owner, route and action |
 | `governance/model_inventory.yaml` | The inventory itself |

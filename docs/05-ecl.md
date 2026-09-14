@@ -95,8 +95,8 @@ and selectable (R-006); the two options differ by under 1%.
 By month 300 only 0.3% of the original cohort is still there to default;
 prepayment has removed almost everything. Chaining the 12-month PD ignores that
 and reports 14.6%, **5.5 times** the hazard-implied figure. That is the number an
-interviewer asking "where does the year-five PD come from" is checking you have
-not produced.
+reviewer asking "where does the year-five PD come from" is checking has not
+been produced.
 
 ### Reconciliation: the acceptance criterion
 

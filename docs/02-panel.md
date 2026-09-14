@@ -25,7 +25,7 @@ a default is.
 
 ## 2. The observation-cohort design
 
-This is the part most portfolio projects get wrong, so be ready to explain it.
+This is the design decision everything downstream rests on, so it is stated in full.
 
 The naive approach is one row per loan: features at origination, label = "did it
 ever default". That's wrong for three reasons — it can't express *when*, it
@@ -50,7 +50,7 @@ One loan therefore contributes **many rows**, one per quarter it survives. A
 1999 loan alive through 2006 contributes ~32 rows, each with different state and
 its own forward window.
 
-Consequences worth stating out loud in an interview:
+Consequences worth stating explicitly:
 
 - **Rows are not independent.** The same borrower appears repeatedly. Standard
   errors that assume independence are too narrow — which is exactly why Phase 5
@@ -212,7 +212,7 @@ What happened instead:
 > month's code. Corrected figures: 54.9%, and exactly zero before 2014. Logged
 > as **R-001**, and covered in [Phase 3](03-scorecard.md#7-what-a-code-review-caught).
 
-**Why this is the best interview story in the project so far.** It shows a
+**Why this matters.** It shows a
 suspicious number being chased rather than shipped, a distinction held between
 *measurement* and *economic intent*, and the discipline not to quietly patch a
 locked definition. That's what second-line review actually looks like.
@@ -251,7 +251,7 @@ mis-date the crisis by three years.
 
 ---
 
-## 7. Likely interview questions
+## 7. Questions a reviewer would ask
 
 **"How did you set up the training data?"**
 > Observation-cohort panel. At each quarter-end from 1999 to 2019 I take every
