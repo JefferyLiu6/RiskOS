@@ -573,7 +573,7 @@ def selection(s: Sources) -> str:
         "**The condition that qualifies the decision.** Both candidates score near zero on the "
         "most heavily weighted dimension. The rubric selected the less-bad of two models that both "
         "fail the criterion that matters most for provisioning (F-006). The selected model is "
-        "recorded in the inventory as a candidate and is not approved; see §12 and F-018."
+        "recorded in the inventory as a candidate and is not approved; see §12 and F-006."
     )
     return section("6. Champion-challenger selection", *blocks)
 
@@ -1154,8 +1154,10 @@ def findings(s: Sources) -> str:
         "data), F-003 (a deliberate design cost), F-005, F-006 and F-009 (the calibration and "
         "overlay results the project exists to report), F-014 (disclosed, with the correct "
         "reduced-form choice in place) and F-017 (a known-defective low-severity threshold) carry "
-        "an accepted residual risk. **Open findings that imply work:** F-004 (report the variant "
-        "without delinquency), F-008 (estimate the long-horizon hazard), F-011 (a specification "
+        "an accepted residual risk. F-004's delinquency ablation is reported in §5; the finding "
+        "remains open for behavioural-model interpretation and validation limitations. "
+        "**Open findings that imply work:** F-008 (estimate the long-horizon hazard), "
+        "F-011 (a specification "
         "using delinquency state), F-015 (a leading indicator that can see a changing "
         "relationship), F-016 (split time-structural features out of CSI).",
         table,

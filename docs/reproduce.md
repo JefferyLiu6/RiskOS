@@ -20,11 +20,24 @@ and [monitoring chart](../reports/figures/monitoring_blind_spot.png) without Pyt
 
 ## Rebuild the core experiment
 
-Register for Freddie Mac SFLLD via Clarity Data Intelligence. Download sample
-vintages **1999–2012** and **2015–2019**, unpack to `data/raw/`, and set the layout
-version in `conf/data.yaml`. See [ingest](01-ingest.md) for file layout and validation.
-Loan-level data is licensed and is not committed; there is no scraper in this repo.
-`data/` can be a local directory or a symlink to external storage.
+### Download the source data
+
+1. Open Freddie Mac's official [Single-Family Loan-Level Dataset page](https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset).
+2. Follow **Access Historical Data**, register/sign in to [Clarity Data Intelligence](https://capitalmarkets.freddiemac.com/clarity), and accept the applicable data terms.
+3. In **SFLLD Data Download**, select the **sample files** for vintages
+   **1999–2012** and **2015–2019** (19 years). Download both origination and
+   monthly performance files for each year.
+4. Extract `sample_orig_YYYY.txt` and `sample_perf_YYYY.txt` into `data/raw/`.
+   See [ingest](01-ingest.md) for file layout and validation.
+
+The parser is configured for **Release 47 (July 2026)** in `conf/data.yaml`.
+Check the download's layout against that configuration; changing only the version
+label does not adapt the parser. Freddie Mac updates historical data, so a later
+release may not reproduce the saved metrics exactly. Record the release used.
+
+Downloads require registration; there is no anonymous ZIP bundled here. Loan-level
+data is licensed and is not committed. `data/` can be a local directory or a
+symlink to external storage.
 
 FRED series require a key in `.env` (see `.env.example`). `make ingest` first runs
 `make macro`, which fetches those series or uses the local cache.

@@ -202,7 +202,7 @@ Recalibration corrects a level that is systematically wrong on data you have. It
 
 **Explanation comparison** on 10 stress-period borrowers: top-driver agreement 100%, top-three overlap 0.73. Reconstruction error: scorecard points 1.14e-13, SHAP 1.15e-14. Both mechanisms are exact; the genuine difference is that points are absolute, on a human scale and enumerable in advance, while SHAP is relative to a population baseline in log-odds.
 
-**The condition that qualifies the decision.** Both candidates score near zero on the most heavily weighted dimension. The rubric selected the less-bad of two models that both fail the criterion that matters most for provisioning (F-006). The selected model is recorded in the inventory as a candidate and is not approved; see §12 and F-018.
+**The condition that qualifies the decision.** Both candidates score near zero on the most heavily weighted dimension. The rubric selected the less-bad of two models that both fail the criterion that matters most for provisioning (F-006). The selected model is recorded in the inventory as a candidate and is not approved; see §12 and F-006.
 
 ## 7. Lifetime PD: the hazard term structure
 
@@ -398,8 +398,8 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 
 | Model | Family | Status | Tier | Approval | Review due | Monitored by | Limitations |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RISKOS_PD_001 | woe_scorecard | in_use | 1 | approved_with_conditions | 2027-08-31 | MON-01, MON-02, MON-03, MON-04, MON-05, MON-06 | F-004, F-005, F-015, F-018 |
-| RISKOS_PD_002 | lightgbm | candidate | 1 | not_approved | — | MON-01, MON-02, MON-03, MON-04, MON-05, MON-06 | F-006, F-007, F-018 |
+| RISKOS_PD_001 | woe_scorecard | in_use | 1 | approved_with_conditions | 2027-08-31 | MON-01, MON-02, MON-03, MON-04, MON-05, MON-06 | F-004, F-005, F-015 |
+| RISKOS_PD_002 | lightgbm | candidate | 1 | not_approved | — | MON-01, MON-02, MON-03, MON-04, MON-05, MON-06 | F-006, F-007 |
 | RISKOS_HAZ_001 | cloglog_discrete_hazard | in_use | 1 | approved_with_conditions | 2027-09-08 | none | F-008, F-011, F-014 |
 | RISKOS_LGD_001 | segment_mean_shrunk | in_use | 1 | approved_with_conditions | 2027-09-08 | none | none |
 
@@ -433,7 +433,7 @@ A review with no findings is not credible. Findings are recorded when found, not
 | medium | 4 | 8 | 12 |
 | low | 2 | 1 | 3 |
 
-**Open findings that are conclusions, not defects.** F-001 (a policy intervention in the data), F-003 (a deliberate design cost), F-005, F-006 and F-009 (the calibration and overlay results the project exists to report), F-014 (disclosed, with the correct reduced-form choice in place) and F-017 (a known-defective low-severity threshold) carry an accepted residual risk. **Open findings that imply work:** F-004 (report the variant without delinquency), F-008 (estimate the long-horizon hazard), F-011 (a specification using delinquency state), F-015 (a leading indicator that can see a changing relationship), F-016 (split time-structural features out of CSI).
+**Open findings that are conclusions, not defects.** F-001 (a policy intervention in the data), F-003 (a deliberate design cost), F-005, F-006 and F-009 (the calibration and overlay results the project exists to report), F-014 (disclosed, with the correct reduced-form choice in place) and F-017 (a known-defective low-severity threshold) carry an accepted residual risk. F-004's delinquency ablation is reported in §5; the finding remains open for behavioural-model interpretation and validation limitations. **Open findings that imply work:** F-008 (estimate the long-horizon hazard), F-011 (a specification using delinquency state), F-015 (a leading indicator that can see a changing relationship), F-016 (split time-structural features out of CSI).
 
 | ID | Severity | Status | Phase | Title |
 | --- | --- | --- | --- | --- |
@@ -507,8 +507,8 @@ A review with no findings is not credible. Findings are recorded when found, not
 
 ## 15. Conclusion and conditions
 
-- **RISKOS_PD_001**: approved with conditions on 2026-08-31, review due 2027-08-31. Limitations carried: F-004, F-005, F-015, F-018.
-- **RISKOS_PD_002**: not approved. Limitations carried: F-006, F-007, F-018.
+- **RISKOS_PD_001**: approved with conditions on 2026-08-31, review due 2027-08-31. Limitations carried: F-004, F-005, F-015.
+- **RISKOS_PD_002**: not approved. Limitations carried: F-006, F-007.
 - **RISKOS_HAZ_001**: approved with conditions on 2026-09-08, review due 2027-09-08. Limitations carried: F-008, F-011, F-014.
 - **RISKOS_LGD_001**: approved with conditions on 2026-09-08, review due 2027-09-08. Limitations carried: none.
 

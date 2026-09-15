@@ -45,7 +45,6 @@ Generated 2026-09-15 from governance/model_inventory.yaml, the bundle manifests,
 | F-004 | medium | open | Delinquency status at the observation date dominates the scorecard |
 | F-005 | high | open | Scorecard materially under-predicts default under regime change |
 | F-015 | high | open | Score PSI is blind to the 2008 regime change, so drift monitoring gives zero months of warning on the failure it exists to catch |
-| F-018 | high | remediated | The model selected by the Phase 4 rubric has no scoring-ready artefact, so every downstream figure comes from the model that lost |
 
 ## RISKOS_PD_002 — 12-month PD challenger (LightGBM)
 
@@ -68,7 +67,7 @@ Generated 2026-09-15 from governance/model_inventory.yaml, the bundle manifests,
 
 **Intended use.** As RISKOS_PD_001. Selected on the recorded rubric but not deployed.
 
-**Prohibited use.** As RISKOS_PD_001, and additionally not to be reported as the model behind any published figure until a scoring-ready artefact exists and has been monitored. See F-018.
+**Prohibited use.** As RISKOS_PD_001. Published experimental figures identify this model explicitly; its persisted artefact and monitoring address F-018. Selection by the rubric does not authorize deployment or provisioning use.
 
 **Clearance conditions.** An artefact now exists (F-018 remediated) and the model is monitored on the same rulebook as RISKOS_PD_001, but it remains not cleared for use. A loadable artefact is not a validated model. Independent validation has not been performed. Clearance would also have to address F-006: the rubric's calibration dimension scores this model 0.062 out of 1.0.
 
@@ -87,7 +86,6 @@ Generated 2026-09-15 from governance/model_inventory.yaml, the bundle manifests,
 | --- | --- | --- | --- |
 | F-006 | high | open | Both PD candidates fail the calibration dimension under stress |
 | F-007 | low | open | The selection rubric measured the wrong proxy for explainability |
-| F-018 | high | remediated | The model selected by the Phase 4 rubric has no scoring-ready artefact, so every downstream figure comes from the model that lost |
 
 ## RISKOS_HAZ_001 — Discrete-time hazard with competing risks
 

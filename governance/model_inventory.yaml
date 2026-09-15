@@ -96,7 +96,7 @@ models:
         reported. This is not independent validation; tier 1 would ordinarily
         require that. The gap is recorded here rather than waived.
 
-    limitations: [F-004, F-005, F-015, F-018]
+    limitations: [F-004, F-005, F-015]
 
   - id: RISKOS_PD_002
     name: 12-month PD challenger (LightGBM)
@@ -115,9 +115,9 @@ models:
     intended_use: >-
       As RISKOS_PD_001. Selected on the recorded rubric but not deployed.
     prohibited_use: >-
-      As RISKOS_PD_001, and additionally not to be reported as the model behind
-      any published figure until a scoring-ready artefact exists and has been
-      monitored. See F-018.
+      As RISKOS_PD_001. Published experimental figures identify this model
+      explicitly; its persisted artefact and monitoring address F-018.
+      Selection by the rubric does not authorize deployment or provisioning use.
 
     artefact: models/challenger_bundle
     monitored_by: [MON-01, MON-02, MON-03, MON-04, MON-05, MON-06]
@@ -134,7 +134,7 @@ models:
         not been performed. Clearance would also have to address F-006: the
         rubric's calibration dimension scores this model 0.062 out of 1.0.
 
-    limitations: [F-006, F-007, F-018]
+    limitations: [F-006, F-007]
 
   - id: RISKOS_HAZ_001
     name: Discrete-time hazard with competing risks

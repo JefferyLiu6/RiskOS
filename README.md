@@ -70,6 +70,8 @@ configuration, and evidence.
 
 **No setup needed to review:** the [walkthrough](docs/demo.md), figures, and aggregate
 CSVs render directly on GitHub. Licensed loan-level data and fitted models are not included.
+[Download the source data from Freddie Mac](https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset)
+(registration required); [download steps and required vintages](docs/reproduce.md#download-the-source-data).
 
 With Python 3.12 and `uv` installed, from the repository root:
 
