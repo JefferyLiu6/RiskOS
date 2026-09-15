@@ -1,4 +1,4 @@
-"""Phase 4 — champion/challenger selection on a pre-committed rubric (§7.6).
+"""Phase 4 — champion/challenger selection on a recorded rubric (§7.6).
 
 Every scoring transform is fixed in ``conf/models.yaml`` before the comparison
 runs. Nothing here chooses a winner; it applies arithmetic that was settled in
@@ -64,7 +64,7 @@ def score_candidate(
     microseconds_per_row: float,
     cfg: SelectionConfig | None = None,
 ) -> CandidateScore:
-    """Apply the pre-committed rubric to one candidate's measured results."""
+    """Apply the recorded rubric to one candidate's measured results."""
     cfg = cfg or models_config().selection
     scoring = cfg.scoring
 
@@ -115,7 +115,7 @@ def select(
         reason = (
             f"{winner.name} and {runner_up.name} are within 0.02 "
             f"({winner.weighted_total:.4f} vs {runner_up.weighted_total:.4f}), so the "
-            f"pre-committed tie-breaker applies: {cfg.tie_breaker.strip()} "
+            f"recorded tie-breaker applies: {cfg.tie_breaker.strip()} "
             f"Selected {more_explainable.name}."
         )
         log.info("selection_tie_break", selected=more_explainable.name)

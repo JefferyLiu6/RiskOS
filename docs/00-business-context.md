@@ -133,7 +133,7 @@ Four claims, each of which the later chapters have to earn with evidence:
    1999–2006, then watch the model meet 2008. Any model looks fine in-sample;
    the question is what it does when the world changes.
 3. **A validation with no findings is not credible.** This one carries a
-   findings register, populated at discovery.
+   findings register, with recorded finding dates.
 4. **Clearance with conditions, not a pretence of no limitations.** Inventory
    clearance fields name conditions and a review date. They mean developer
    clearance for this educational project — not an independent model-risk
@@ -183,7 +183,7 @@ that is the gap this repository is built around:
 | **KS / Gini** | Discrimination measures — can the model separate good from bad |
 | **PSI / CSI** | Population / Characteristic Stability Index — has the scored population drifted from training |
 | **Calibration** | Do predicted probabilities match observed frequencies |
-| **Champion / challenger** | Incumbent model vs candidate replacement, compared on a pre-committed rubric |
+| **Champion / challenger** | Incumbent model vs candidate replacement, compared on a recorded rubric |
 | **OOT** | Out-of-time validation — test on a *later* period, never a random split |
 | **Vintage** | The cohort of loans originated in a given period |
 | **Basis point (bp)** | 0.01%. 10bp on $300B is $300M |

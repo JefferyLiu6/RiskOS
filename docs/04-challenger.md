@@ -3,7 +3,7 @@
 > Detailed reference. Start with the [demo](../README.md); use the
 > [reference index](README.md) to find a specific topic.
 
-**Status: complete.** LightGBM selected, 0.4035 vs 0.3648 · **189 tests**
+**Implemented:** LightGBM selected, 0.4035 vs 0.3648
 
 > Two findings here matter more than the winner. First, the build plan's stated
 > hypothesis was **contradicted by the evidence** — and reporting that is the
@@ -15,12 +15,11 @@
 
 ---
 
-## 1. The governance move: commit the rubric first
+## 1. The recorded comparison rubric
 
-`conf/models.yaml` fixes the weights, the scoring transforms, and the
-tie-breaker **before the challenger is fitted**. That ordering is the entire
-point. Weights chosen after seeing which model wins are not a rubric; they are a
-justification written backwards.
+`conf/models.yaml` specifies weights, scoring transforms, and a tie-breaker.
+The table below shows how the recorded scoring rules weigh each dimension
+of the retrospective comparison.
 
 | Dimension | Weight | Why |
 | --- | --- | --- |
@@ -30,7 +29,7 @@ justification written backwards.
 | Explainability | 0.15 | E-23 expects explicable behaviour |
 | Latency | 0.05 | Neither candidate is remotely slow |
 
-The weights come from build plan §1's ordering, fixed before any modelling.
+The weights reflect the priorities recorded in the development notes.
 Config **rejects** a weighted dimension with no written rationale or no scoring
 rule.
 
@@ -168,7 +167,7 @@ an ensemble.
 
 ## 5. I got the explainability scoring wrong (F-007)
 
-The pre-committed rule awarded 1.0 for "exact decomposition" and 0.6 for
+The recorded rule awarded 1.0 for "exact decomposition" and 0.6 for
 "approximate attribution", and I assigned SHAP 0.6 **a priori**.
 
 Then I measured it:
@@ -183,7 +182,7 @@ an assumption the evidence contradicts.
 
 ### What I did about it
 
-**Applied the rule as written, unchanged.** Rewriting a pre-committed rubric
+**Applied the rule as written, unchanged.** Rewriting a recorded rubric
 after seeing results is exactly what committing it in advance is meant to
 prevent. Instead, reported the sensitivity:
 
@@ -200,7 +199,7 @@ values are **relative to a population baseline, in log-odds, computed per
 borrower**. Both are additive and exact. The rubric measured the wrong proxy.
 
 > This is a better governance story than a clean rubric would have been. A
-> pre-committed rule can be committed *and still be wrong*. The discipline is to
+> recorded rule can be committed *and still be wrong*. The discipline is to
 > apply it as written and report the sensitivity — not to quietly amend it.
 
 ---
@@ -234,7 +233,7 @@ communication-design advantage, not a mathematical one.**
 ## 7. Questions a reviewer would ask
 
 **"How did you choose between the models?"**
-> A weighted rubric committed to config before the challenger was fitted —
+> A weighted rubric recorded in config —
 > calibration 0.35, stability 0.25, discrimination 0.20, explainability 0.15,
 > latency 0.05, taken from the project's stated priorities. LightGBM won
 > 0.40 to 0.36. But the headline isn't that it won: both candidates scored
@@ -259,7 +258,7 @@ communication-design advantage, not a mathematical one.**
 **"Your rubric was wrong. What did you do?"**
 > I'd scored SHAP 0.6 for being an approximate attribution. Then I measured the
 > reconstruction error and TreeSHAP came back exact to 1e-14. I applied the rule
-> as written anyway — amending a pre-committed rubric after seeing results
+> as written anyway — amending a recorded rubric after seeing results
 > defeats the purpose — and reported the sensitivity instead. Equalising
 > explainability, LightGBM wins by more, so the decision was robust to my error.
 > It's logged as a finding.

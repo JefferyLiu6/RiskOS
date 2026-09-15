@@ -40,7 +40,7 @@ jobs:
       - name: Type-check
         run: uv run mypy
 
-      - name: Test
+      - name: Test (includes synthetic ECL integration without licensed data)
         run: uv run pytest -p no:warnings
 
       - name: Verify saved-results walkthrough

@@ -508,6 +508,27 @@ def test_macro_fit_recovers_known_coefficients(fixture_macro_series: pl.DataFram
     assert fitted.n_observations == 60
 
 
+def test_macro_backtest_uses_fitted_intercept_and_is_independent_of_evaluation_batch(
+    fixture_macro_series: pl.DataFrame,
+) -> None:
+    fitted = macro.fit(fixture_macro_series.head(24), "synthetic-training-only")
+    result = macro.backtest(fitted, fixture_macro_series, ("2008Q1", "2009Q4"))
+    crisis = fixture_macro_series.filter(pl.col("quarter").dt.year().is_between(2008, 2009))
+    isolated = macro.backtest(fitted, crisis, ("2008Q1", "2009Q4"))
+    expected = 1 / (
+        1
+        + np.exp(
+            -(
+                fitted.coefficients["const"]
+                + fitted.coefficients["unemployment"] * crisis["unemployment"].to_numpy()
+                + fitted.coefficients["hpi_yoy"] * crisis["hpi_yoy"].to_numpy()
+            )
+        )
+    )
+    np.testing.assert_allclose(result["predicted_default_rate"], expected)
+    np.testing.assert_allclose(result["predicted_default_rate"], isolated["predicted_default_rate"])
+
+
 def test_hac_intervals_bracket_the_point_estimates(
     fixture_macro_series: pl.DataFrame,
 ) -> None:

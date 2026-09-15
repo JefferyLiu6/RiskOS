@@ -153,7 +153,7 @@ def _score_rubric(
     gbm_prepare: Any,
     panel: pl.DataFrame,
 ) -> list[selection.CandidateScore]:
-    """Apply the pre-committed rubric to the uncalibrated candidates."""
+    """Apply the recorded rubric to the uncalibrated candidates."""
     train = panel.filter(pl.col("split") == "train")
     latencies = {
         "scorecard": _latency_us(card.predict_proba, card_prepare(train)),

@@ -4,6 +4,8 @@ Start with the [presentation walkthrough](demo.md) or the [project overview](../
 The phase documents below are detailed development references; you do not need to
 read them in sequence. [Setup and reproduction](reproduce.md) covers execution.
 
+[Validation coverage and limitations](validation.md) summarises the empirical and automated checks.
+
 ## Core experiment
 
 | Question | Read | Implementation |
@@ -35,7 +37,7 @@ read them in sequence. [Setup and reproduction](reproduce.md) covers execution.
 | `conf/assumptions.yaml`, `conf/scenarios.yaml` | Cross-cutting numeric assumptions and ECL scenarios |
 
 The YAML files remain separate because they configure different pipeline steps.
-Their historical comments record choices made before fitting.
+Their historical timing claims are unverified; see [configuration provenance](../conf/README.md).
 
 ## Evidence: inputs versus generated outputs
 

@@ -1,4 +1,4 @@
-.PHONY: setup macro ingest panel features train challenger evaluate hazard ecl monitor registry serve report test lint all
+.PHONY: ablate setup macro ingest panel features train challenger evaluate hazard ecl monitor registry serve report test lint all
 
 PY := uv run
 
@@ -22,6 +22,9 @@ train:             ## Phase 3 — WOE scorecard champion candidate
 
 challenger:        ## Phase 4 — LightGBM challenger, calibration, selection rubric
 	$(PY) riskos challenger
+
+ablate:            ## Retrospective delinquency sensitivity on the existing panel
+	$(PY) riskos ablate
 
 evaluate:          ## Phase 3/4 — metrics on all four splits
 	$(PY) riskos evaluate

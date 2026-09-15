@@ -35,18 +35,24 @@ The [selection memo](reports/model_selection_memo.md) records the rubric's prefe
 for LightGBM. The illustrative scoring service still uses the scorecard;
 [selection and clearance are separate decisions](governance/model_inventory.yaml).
 
+## Sensitivity and validation
+
+- [Delinquency ablation](reports/delinquency_ablation.md): crisis AUC without current delinquency is **0.757** (scorecard) and **0.776** (LightGBM).
+- [Synthetic integration checks](tests/test_ecl_integration.py): exercise per-loan alignment, loss arithmetic, the ECL CLI, and report totals in CI without licensed data.
+- [Validation coverage and limitations](docs/validation.md): what the empirical studies and automated checks establish.
+
 ## Design decisions you can inspect
 
 | Decision | Why it matters | Evidence |
 | --- | --- | --- |
 | Split by time and separate loans; exclude post-outcome fields | Test generalisation without leaking future information | [Panel construction](src/riskos/panel/build.py) · [leakage checks](tests/test_leakage.py) |
-| Give both models the same candidate features and use a fixed comparison rubric | Make the comparison interpretable and limit result-driven tuning | [Training and rubric config](conf/models.yaml) · [selection tests](tests/test_selection_and_calibration.py) |
+| Give both models the same candidate features and use a fixed comparison rubric | Make the comparison explicit and repeatable | [Training and rubric config](conf/models.yaml) · [selection tests](tests/test_selection_and_calibration.py) |
 | Track when default outcomes become observable | Avoid claiming that a retrospective signal was available in real time | [Performance monitoring](src/riskos/monitor/performance.py) · [timing tests](tests/test_monitoring.py) |
 | Turn discovered defects into regression tests | Protect fixes, including missing-value drift and look-ahead in forbearance labels | [Review regression tests](tests/test_review_regressions.py) |
 
 The [selection memo](reports/model_selection_memo.md#6-a-correction-to-the-rubrics-own-explainability-scoring)
-also records a mistaken assumption about SHAP explainability and the sensitivity
-analysis used to check whether correcting it changes the decision.
+compares explanation methods and tests whether alternative explainability scores
+change the model-selection decision.
 
 ## What is implemented
 
@@ -74,8 +80,8 @@ make test        # run tests; checks requiring unavailable local artifacts skip
 make lint        # Ruff lint/format checks and strict mypy
 ```
 
-The [CI workflow](.github/workflows/ci.yml) runs lint, type checks, and tests on pushes
-and pull requests. [Reproduction instructions](docs/reproduce.md) cover licensed
+The [CI workflow](.github/workflows/ci.yml) runs lint, type checks, and synthetic integration tests on pushes
+and pull requests. It does not rerun the licensed mortgage experiment. [Reproduction instructions](docs/reproduce.md) cover licensed
 data access and rebuilding the pipeline. Saved results are evidence from prior runs;
 `make evaluate` does not retrain models.
 

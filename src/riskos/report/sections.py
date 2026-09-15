@@ -78,12 +78,15 @@ def title_block(s: Sources) -> str:
         [
             "# RiskOS — Model Validation Report",
             "",
-            f"**Generated:** {date.today().isoformat()} from the pipeline artefacts  ",
-            f"**Models in scope:** {ids}  ",
-            "**Review type:** developer validation with simulated second-line review  ",
-            "**Author and reviewer:** project author (see §2 on independence)  ",
+            f"**Generated:** {date.today().isoformat()} from the pipeline artefacts<br>",
+            f"**Models in scope:** {ids}<br>",
+            "**Review type:** developer validation with simulated second-line review<br>",
+            "**Author and reviewer:** project author (see §2 on independence)<br>",
             "",
             f"> {SCOPE_STATEMENT}",
+            "",
+            "> [Validation coverage and limitations](../docs/validation.md) summarises "
+            "the empirical studies and automated checks.",
             "",
         ]
     )
@@ -147,10 +150,10 @@ def executive_summary(s: Sources) -> str:
         if severe:
             line += (
                 f" The severe-stress scenario alone spans {money(severe['ecl_low'])} to "
-                f"{money(severe['ecl_high'])} at 95% confidence, a factor of "
-                f"{ratio(severe['ecl_high'] / severe['ecl_low'], 1)} end to end. That width is "
-                "the correct representation of what the estimation sample can support, not a "
-                "presentational weakness."
+                f"{money(severe['ecl_high'])} under coefficient-endpoint sensitivity, a factor of "
+                f"{ratio(severe['ecl_high'] / severe['ecl_low'], 1)} end to end. This is not a "
+                "validated 95% prediction interval; parameter covariance, model error, "
+                "and scenario uncertainty are not fully represented."
             )
         blocks.append(line)
     else:
@@ -214,8 +217,8 @@ def scope(s: Sources) -> str:
         f"**Scope.** {SCOPE_STATEMENT}",
         "**Independence.** This project is built by one person. It cannot claim organisational "
         "independence between model development and model validation. The review artefact is "
-        "therefore a *developer validation with simulated second-line review*: pre-committed "
-        "rules, a findings register populated at discovery, clearance conditions and review "
+        "therefore a *developer validation with simulated second-line review*: recorded "
+        "rules, a findings register with recorded finding dates, clearance conditions and review "
         "dates, and reconciliation of the inventory against what is on disk — without an "
         "independent reviewer. Every tier-1 clearance in §12 records that gap as a condition, "
         "not a waiver.",
@@ -249,7 +252,7 @@ def data(s: Sources) -> str:
         f"**Vintages.** Core {vintages['core'][0]}-{vintages['core'][-1]} and benign contrast "
         f"{vintages['benign'][0]}-{vintages['benign'][-1]}."
         + (f" {manifest_line}" if manifest_line else ""),
-        f"**Default definition (locked before results).** {squash(dd['statement'])} "
+        f"**Recorded default definition.** {squash(dd['statement'])} "
         f"Credit-event terminations: {', '.join(dd['credit_event_terminations'])}. "
         f"Excluded and not counted as good: {', '.join(dd['excluded_not_counted_as_good'])}. "
         "The whole-loan-sale mapping is a judgement rather than a transcription and is recorded "
@@ -494,6 +497,24 @@ def performance(s: Sources) -> str:
                     ],
                 )
             )
+    study = s.csv("delinquency_ablation")
+    if study is not None:
+        blocks.append(
+            "**Delinquency ablation (retrospective).** Both families were refitted "
+            "without current delinquency on the existing splits. The baseline "
+            "uses the saved bundles. See [study and protocol](delinquency_ablation.md)."
+        )
+        blocks.append(
+            df_table(
+                study.filter((pl.col("split") == "oot_stress") & (pl.col("group") == "all")),
+                [
+                    ("model", "Model", text),
+                    ("variant", "Variant", text),
+                    ("auc", "AUC", lambda v: ratio(v, 4)),
+                    ("observed_over_expected", "O/E", ratio),
+                ],
+            )
+        )
     return section("5. Performance: discrimination held, calibration collapsed", *blocks)
 
 
@@ -506,8 +527,7 @@ def selection(s: Sources) -> str:
     expl = s.json("explanation_summary")
     weights = s.conf("models")["selection"]["weights"]
     blocks = [
-        "**The rubric was committed before the challenger was fitted** (conf/models.yaml, "
-        "verifiable in git history). Weights: "
+        "**Recorded comparison rubric** (conf/models.yaml). Weights: "
         + ", ".join(f"{k} {v}" for k, v in weights.items())
         + ". Calibration is weighted highest because ECL is a money number.",
     ]
@@ -744,6 +764,13 @@ def ecl(s: Sources) -> str:
     if stage is None:
         return section("9. Expected credit loss", _missing(s, "ecl_by_stage"))
     total_ecl, total_ead = float(stage["ecl"].sum()), float(stage["ead"].sum())
+    blocks.append(
+        "**Educational ECL approximation.** The empirical panel excludes loans "
+        "already in default, so it supplies no Stage 3 validation. The SICR "
+        "comparison lacks a transition model and older lifetime hazards are "
+        "extrapolated. Passing arithmetic tests does not validate these methods "
+        "for financial reporting; see F-011 and F-014."
+    )
     n = int(stage["n_loans"].sum())
     blocks.append(
         f"**As at the last training date, {num(n)} loans, {money(total_ead)} exposure.** Each "
@@ -862,8 +889,8 @@ def macro(s: Sources) -> str:
                     ("pd_multiplier", "PD multiplier", ratio),
                     ("extrapolates", "Extrapolates", text),
                     ("ecl", "ECL", money),
-                    ("ecl_low", "95% low", money),
-                    ("ecl_high", "95% high", money),
+                    ("ecl_low", "Sensitivity low", money),
+                    ("ecl_high", "Sensitivity high", money),
                 ],
             )
         )
@@ -916,7 +943,7 @@ def monitoring(s: Sources) -> str:
     mon = s.json("monitoring_summary")
     mcfg = s.conf("monitoring")
     blocks = [
-        "**Design.** Six rules committed before the run (conf/monitoring.yaml), each with a "
+        "**Design.** Six recorded rules (conf/monitoring.yaml), each with a "
         "metric, thresholds, severity, owner and required action. Leading indicators (score PSI, "
         "feature CSI) are knowable at scoring time; lagging indicators (observed/expected, Gini, "
         "Brier reliability) need the twelve-month outcome window to close, and every alert "
@@ -977,7 +1004,7 @@ def monitoring(s: Sources) -> str:
     )
     if (s.figures / "monitoring_blind_spot.png").exists():
         blocks.append(
-            "![Calibration collapses through 2008 while score PSI never leaves the stable band]"
+            "![Calibration deteriorates during the crisis while score PSI stays below warning]"
             "(figures/monitoring_blind_spot.png)"
         )
     blocks.append(

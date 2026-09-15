@@ -3,7 +3,7 @@
 > Detailed reference. Start with the [demo](../README.md); use the
 > [reference index](README.md) to find a specific topic.
 
-**Status: complete.** 19 vintages, 950,000 loans, 57,422,329 loan-months.
+**Implemented:** 19 vintages, 950,000 loans, 57,422,329 loan-months.
 
 > Phases 1 and 2 are roughly 40% of the work. That is not a warning about
 > tedium — it is where the errors that silently invalidate everything

@@ -45,6 +45,58 @@ def build_report(s: Sources) -> str:
     return "\n".join(fn(s) for fn in SECTIONS)
 
 
+def build_ablation_note(s: Sources) -> str:
+    frame = s.csv("delinquency_ablation")
+    if frame is None:
+        return "# Delinquency ablation\n\nNot run. Requires the licensed panel and saved bundles.\n"
+    rows = frame.filter(pl.col("split") == "oot_stress")
+    blocks = [
+        "# Delinquency ablation",
+        "Retrospective sensitivity study on the existing evaluation splits. "
+        "It is not a fresh holdout or a causal estimate of delinquency's effect.",
+        "![Crisis performance with and without delinquency](figures/delinquency_ablation.png)",
+        "## Crisis period: all observations",
+    ]
+    for group, heading in (("all", ""), ("current", "## Crisis period: current loans only")):
+        if heading:
+            blocks.append(heading)
+        blocks.append(
+            md_table(
+                ["Model", "Variant", "Rows", "AUC", "Observed / expected"],
+                [
+                    [
+                        r["model"],
+                        r["variant"],
+                        f"{r['n']:,}",
+                        ratio(r["auc"], 4),
+                        ratio(r["observed_over_expected"], 3),
+                    ]
+                    for r in rows.filter(pl.col("group") == group).to_dicts()
+                ],
+            )
+        )
+    blocks += [
+        "## Interpretation",
+        "Removing delinquency reduces whole-crisis ranking performance for both families. "
+        "The current-only cohort separates ranking within performing loans from "
+        "ranking across delinquency states. Both variants still under-predict crisis defaults. "
+        "Other behavioural covariates remain; this is not an origination-only experiment.",
+        "## Method and reproduction",
+        "Baselines are reloaded fitted bundles. The scorecard variant reuses the same "
+        "training-only univariate bins and repeats feature selection and coefficient fitting "
+        "without current delinquency. The LightGBM variant repeats the configured grid and "
+        "validation early stopping without that feature. All metrics are uncalibrated. "
+        "The same observations are used for each paired comparison; other splits and "
+        "30-60 DPD cohorts are in the CSV.",
+        "Run `make ablate` with the licensed panel and saved baseline bundles, then "
+        "`make report`. This writes separate study outputs and does not replace the main models.",
+        "[All results](figures/delinquency_ablation.csv) · "
+        "[Run protocol, input hashes, fitted features, and grid](figures/delinquency_ablation_manifest.json) · "
+        "[Implementation](../src/riskos/models/ablation.py)",
+    ]
+    return "\n\n".join(blocks) + "\n"
+
+
 def _performance_rows(s: Sources, label: str) -> str:
     cc = s.csv("champion_challenger_metrics")
     if cc is None:
@@ -138,6 +190,13 @@ def run(root: Path = PROJECT_ROOT) -> dict[str, Any]:
     card = build_model_card(s)
     (reports / REPORT_NAME).write_text(report, encoding="utf-8")
     (reports / CARD_NAME).write_text(card, encoding="utf-8")
+    if (s.figures / "delinquency_ablation.csv").exists():
+        from riskos.models.plots import delinquency_ablation
+
+        study = s.csv("delinquency_ablation")
+        assert study is not None
+        delinquency_ablation(study, s.figures / "delinquency_ablation.png")
+        (reports / "delinquency_ablation.md").write_text(build_ablation_note(s), encoding="utf-8")
     stage = s.csv("ecl_by_stage")
     summary = {
         "report": str(reports / REPORT_NAME),

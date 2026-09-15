@@ -16,6 +16,7 @@ log = get_logger(__name__)
 
 # Which pipeline command regenerates each artefact, for the missing-artefact line.
 PRODUCED_BY: dict[str, str] = {
+    "delinquency_ablation": "riskos ablate",
     "metrics_by_split": "riskos train",
     "information_values": "riskos train",
     "collinearity_pruned": "riskos train",

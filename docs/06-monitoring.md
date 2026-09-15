@@ -3,15 +3,13 @@
 > Detailed reference. Start with the [demo](../README.md); use the
 > [reference index](README.md) to find a specific topic.
 
-**Status: complete.** 64 quarterly windows, 2 models, 6 committed rules, an
-inventory-gated scoring service, **366 tests**
+**Implemented:** 64 quarterly windows, 2 models, 6 committed rules, an
+inventory-gated scoring service.
 
-> The headline finding is a negative one. **Score PSI does not move at all
-> during the 2008 collapse** — it stays below 0.012 for both PD models while
-> they under-predict default by factors of four and five. The drift control that
-> exists to give early warning gives none, and it gives none for two different
-> model families, so the failure is a property of the metric rather than of
-> either model.
+> **Score PSI stays below 0.012 during the crisis** for both PD models,
+> while quarterly observed defaults reach roughly four to five times their
+> predictions. This shows why score-distribution monitoring needs to be paired
+> with outcome-based calibration checks.
 
 **Run it:** `uv run riskos monitor`, `uv run riskos registry`, `uv run riskos serve` (~2 minutes)
 
@@ -44,13 +42,11 @@ have caught something twelve months before it could possibly have known.
 
 ---
 
-## 2. Commit the rulebook first
+## 2. The recorded rulebook
 
-`conf/monitoring.yaml` fixes six rules — metric, comparator, warn and breach
-thresholds, severity, owner, and required action — **before the run**. Same
-discipline as the Phase 4 selection rubric, and for the same reason: a threshold
-chosen after seeing the timeline is not a threshold, it is a description of what
-happened dressed as a control.
+`conf/monitoring.yaml` specifies six rules: metrics, thresholds, severity, owners,
+and actions. The false-alarm and detection-delay analyses below evaluate
+their observed behaviour.
 
 | Rule | Metric | Kind | Warn | Breach |
 | --- | --- | --- | --- | --- |
@@ -224,7 +220,7 @@ The candidate fix is already in the repository. The Phase 5 macro overlay fits
 the quarterly default rate on unemployment and house prices, both observable in
 near real time, so a divergence between the macro-implied rate and the model's
 expected rate is computable the quarter it happens. F-009 records that the
-overlay under-predicts the crisis by half, so it would not have called the
+overlay still under-predicts the crisis (corrected mean O/E 1.79), so it would not have called the
 magnitude — but it would have called the direction in 2007 rather than 2009.
 
 ---

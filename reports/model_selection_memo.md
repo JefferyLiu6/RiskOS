@@ -12,7 +12,7 @@
 
 ## 1. Decision
 
-The pre-committed rubric selects **LightGBM**, 0.4035 against 0.3648.
+The recorded rubric selects **LightGBM**, 0.4035 against 0.3648.
 
 The margin is 0.0387 — outside the 0.02 tie-breaker band, so the tie-breaker
 (prefer the more explainable model) does not engage. The decision follows the
@@ -56,9 +56,9 @@ leaves. The GBM was given very little room to fit crisis-fragile structure.
 
 ## 3. Rubric detail
 
-Weights were committed in `conf/models.yaml` before the challenger was fitted,
-taken from build plan §1's ordering — calibration and stability above
-discrimination.
+Weights are recorded in `conf/models.yaml`, with calibration and stability
+weighted above discrimination. The results below apply the recorded rules
+and include a sensitivity analysis of explainability scoring.
 
 | Dimension | Weight | LightGBM | Scorecard |
 | --- | --- | --- | --- |
@@ -152,7 +152,7 @@ Recorded as **finding F-006, severity high**.
 
 ## 6. A correction to the rubric's own explainability scoring
 
-The pre-committed scoring rule awarded 1.0 for an "exact decomposition" and 0.6
+The recorded scoring rule awarded 1.0 for an "exact decomposition" and 0.6
 for "approximate attribution", and I assigned the scorecard 1.0 and SHAP 0.6
 a priori.
 
@@ -168,7 +168,7 @@ TreeSHAP is exact for tree ensembles, not approximate. The 0.6 was based on an
 assumption the evidence does not support.
 
 **Handling.** The rule as written was applied unchanged — rewriting a
-pre-committed rubric after seeing results is precisely what committing it in
+recorded rubric after seeing results is precisely what committing it in
 advance is meant to prevent. Instead the sensitivity is reported:
 
 | Explainability treatment | LightGBM | Scorecard | Winner |

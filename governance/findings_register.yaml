@@ -4,9 +4,7 @@
 # severity, description, impact, remediation, and owner. A review with no
 # findings is not credible.
 #
-# Findings are recorded WHEN FOUND, not assembled at the end. A finding written
-# up after the fact tends to be written to be survivable; one recorded at
-# discovery is written as it actually was.
+# Finding dates and remediation notes are maintained by the project author.
 #
 # Severity:
 #   high    - materially affects a reported number or invalidates a conclusion
@@ -161,12 +159,17 @@ findings:
       backstop is exactly this information. However the scorecard must also be
       fitted and reported WITHOUT it, so the contribution of origination credit
       quality is visible separately, and so the Phase 5 staging logic is not
-      circular. Not yet done.
+      circular. Update 2026-09-15: both PD families were evaluated with and
+      without this feature on the full existing panel. Crisis AUC moves from
+      0.8191 to 0.7567 (scorecard) and 0.8324 to 0.7758 (LightGBM).
+      See reports/figures/delinquency_ablation.csv and its run manifest.
+      This is a retrospective sensitivity study, not independent validation.
 
     residual_risk: >-
-      Medium until the without-delinquency variant is reported. The risk is
-      interpretive rather than numerical: the model is not wrong, but its
-      headline discrimination could be misattributed to underwriting quality.
+      The missing ablation is now reported, but this remains a behavioural
+      model with current-state covariates and calibration failure under stress.
+      Removing delinquency does not make it an origination underwriting model.
+      The finding remains open as an interpretation and validation limitation.
 
   - id: F-005
     title: Scorecard materially under-predicts default under regime change
@@ -346,7 +349,7 @@ findings:
     owner: project_author
 
     description: >-
-      The champion/challenger comparison selected LightGBM on a pre-committed
+      The champion/challenger comparison selected LightGBM on a recorded
       rubric, but both candidates score approximately zero on calibration, the
       most heavily weighted dimension. On the 2007-2009 OOT-stress split the
       observed-over-expected default rate is 2.80 for LightGBM and 3.21 for the
@@ -395,7 +398,7 @@ findings:
     owner: project_author
 
     description: >-
-      The pre-committed rubric scored explainability as 1.0 for an "exact
+      The recorded rubric scored explainability as 1.0 for an "exact
       decomposition" and 0.6 for "approximate attribution", with the scorecard
       assigned 1.0 and SHAP 0.6 a priori. Measurement contradicts the
       assignment: maximum reconstruction error is 1.14e-13 for scorecard points
@@ -405,7 +408,7 @@ findings:
 
     impact: >-
       Low. The rule as written was applied unchanged, because rewriting a
-      pre-committed rubric after seeing results defeats the purpose of
+      recorded rubric after seeing results defeats the purpose of
       committing it. The sensitivity was reported instead: equalising
       explainability at 1.0 gives LightGBM 0.4635 against the scorecard's
       0.3648, so the selection is unchanged and the margin widens from 0.0387
@@ -421,7 +424,7 @@ findings:
       next comparison, not adjusted during this one.
 
     residual_risk: >-
-      None for this decision. The lesson is that a pre-committed rule can be
+      None for this decision. The lesson is that a recorded rule can be
       committed and still be wrong, and that the discipline is to apply it as
       written and report the sensitivity rather than to amend it retroactively.
 
@@ -464,7 +467,7 @@ findings:
       but "likely conservative" is not a substitute for an estimate.
 
   - id: F-009
-    title: The macro overlay under-predicts the crisis by half, and the reason is structural
+    title: The macro overlay under-predicts the crisis and extrapolates outside its fitting sample
     severity: high
     phase_raised: 5
     date_raised: 2026-08-30
@@ -472,32 +475,24 @@ findings:
     owner: project_author
 
     description: >-
-      The overlay was estimated on 1999Q1-2006Q4 and then fed the REALISED
-      2008-2009 macro path. It predicts quarterly default rates of 0.92% to
-      1.66% against realised rates of 1.81% to 3.17%. The mean ratio of observed
-      to predicted is 2.04.
+      The pre-crisis overlay still under-predicts the realised 2008-2009 macro
+      path. After correcting evaluation-batch centering (R-014), the mean ratio
+      of observed to predicted defaults is 1.79, replacing the previous 2.04.
+      See reports/figures/macro_backtest.csv.
 
     evidence: >-
-      The cause is identified rather than assumed. Year-on-year HPI change in
-      the estimation sample ranges from +1.74% to +16.98% - the sample contains
-      no house-price decline at all, while 2008-2009 realised -18.62% to -5.25%.
-      The fitted HPI coefficient is -0.01934 on the pre-2007 window against
-      -0.04237 on the full 1999-2019 history, a factor of 2.19. Re-running the
-      same backtest with the full-history coefficient gives a ratio of 1.07.
-      The 2.19x coefficient gap accounts almost exactly for the 2.04x shortfall.
-      Note the 1.07 figure is NOT an out-of-sample validation: the full-history
-      fit includes 2008-2009, so it is in-sample by construction. The comparison
-      isolates the mechanism, it does not vindicate the model.
-      Separately, unemployment is not statistically significant in either
-      window: +0.1195 with a Newey-West 95% interval of [-0.0085, +0.2475]
-      pre-2007, and +0.1159 with [-0.0390, +0.2708] on full history. The sign is
-      economically correct in both, but the coefficient is not distinguishable
-      from zero on 24 serially-correlated quarterly observations.
+      There are 24 quarterly estimation observations. Year-on-year HPI ranges
+      from +1.74% to +16.98%, so the sample contains no house-price decline.
+      Crisis forecasts are extrapolations. The pre-crisis HPI coefficient is
+      -0.01934; the full-history value is -0.04237, but that comparison includes
+      the crisis in fitting and is not an independent validation or a causal
+      decomposition of the shortfall. Unemployment's pre-crisis coefficient
+      is +0.1195 with a HAC 95% interval [-0.0085, +0.2475], including zero.
 
     impact: >-
       The overlay reduces but does not close the gap identified in F-006. The
       un-overlaid scorecard understated the crisis default rate by a factor of
-      3.21; the overlay leaves a factor of about 2.04. This is a partial
+      3.21; the overlay leaves a factor of about 1.79. This is a partial
       remediation and must not be presented as a solution. It also means the
       severe-stress scenario, at 10% unemployment and -20% HPI, is an
       extrapolation well outside anything the estimation sample contains -
@@ -1346,7 +1341,7 @@ findings:
       observable in near real time, so a divergence between the macro-implied
       default rate and the model's expected rate is computable the quarter it
       happens rather than twelve months later. F-009 records that this overlay
-      under-predicts the crisis by half, so it would not have called the
+      still under-predicts the crisis (corrected mean O/E 1.79), so it would not have called the
       magnitude, but it would have called the direction in 2007 rather than 2009.
 
     residual_risk: >-
@@ -1627,3 +1622,29 @@ findings:
       worth keeping: a register value that describes a data outcome rather than
       a code constant can only be kept honest by a test that reads the
       artefact, and the assumption tests as written only read the code.
+
+
+  - id: R-014
+    title: Macro backtest predictions depended on the evaluation batch
+    severity: high
+    phase_raised: 5
+    date_raised: 2026-09-15
+    status: remediated
+    owner: project_author
+    source: integration_review
+    description: >-
+      backtest combined the training mean logit default rate with covariates
+      centered on the evaluation-series means. A fixed quarter received a
+      different prediction when unrelated quarters were included in that series.
+    evidence: >-
+      Replacing the evaluation centering with the fitted intercept changes the
+      mean crisis observed/predicted ratio from 2.04 to 1.7886. The coefficient
+      estimates and scenario shifts are unchanged.
+    remediation: >-
+      Predictions now use sigmoid(const + beta_u * unemployment + beta_h * hpi_yoy).
+      A synthetic regression test fits on 24 observations, checks the direct
+      fitted equation, and verifies that crisis-only and full-series scoring
+      agree. The macro backtest CSV and generated report were refreshed.
+    residual_risk: >-
+      The 24-observation fit remains weakly supported for crisis extrapolation.
+      Correcting prediction centering does not resolve F-009.

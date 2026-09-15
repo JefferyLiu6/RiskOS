@@ -21,6 +21,7 @@ import polars as pl
 from riskos.config import CONF_DIR, load_yaml
 from riskos.log import get_logger
 from riskos.models import hazard
+from riskos.panel.alignment import require_same_observations
 
 log = get_logger(__name__)
 
@@ -535,7 +536,7 @@ def with_time_varying(frame: pl.DataFrame) -> pl.DataFrame:
             f"FROM read_parquet('{RISK_SET_GLOB}')"
         )
         con.register("panel_frame", frame.with_row_index("_row_order").to_arrow())
-        return (
+        enriched = (
             con.execute("""
             SELECT p.*,
                    p.current_actual_upb / NULLIF(p.original_upb, 0) AS amortisation_ratio,
@@ -558,6 +559,8 @@ def with_time_varying(frame: pl.DataFrame) -> pl.DataFrame:
             .pl()
             .drop("_row_order")
         )
+        require_same_observations(frame, enriched)
+        return enriched
     finally:
         con.close()
 

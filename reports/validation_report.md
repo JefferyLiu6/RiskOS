@@ -1,11 +1,13 @@
 # RiskOS — Model Validation Report
 
-**Generated:** 2026-09-14 from the pipeline artefacts  
-**Models in scope:** RISKOS_PD_001 v1.0.0, RISKOS_PD_002 v1.0.0, RISKOS_HAZ_001 vn/a, RISKOS_LGD_001 vn/a  
-**Review type:** developer validation with simulated second-line review  
-**Author and reviewer:** project author (see §2 on independence)  
+**Generated:** 2026-09-15 from the pipeline artefacts<br>
+**Models in scope:** RISKOS_PD_001 v1.0.0, RISKOS_PD_002 v1.0.0, RISKOS_HAZ_001 vn/a, RISKOS_LGD_001 vn/a<br>
+**Review type:** developer validation with simulated second-line review<br>
+**Author and reviewer:** project author (see §2 on independence)<br>
 
 > The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are out of scope. The project applies IFRS 9-style ECL measurement and common model-risk practices (inventory, findings, monitoring thresholds; themes also discussed in OSFI Guideline E-23). It is not a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance. Inventory 'approval' fields mean illustrative developer clearance by the project author, not an independent model-risk committee decision.
+
+> [Validation coverage and limitations](../docs/validation.md) summarises the empirical studies and automated checks.
 
 ## 1. Executive summary
 
@@ -16,20 +18,20 @@
 - **RISKOS_HAZ_001** (Discrete-time hazard with competing risks): inventory status `in_use`, clearance `approved_with_conditions`, review due 2027-09-08.
 - **RISKOS_LGD_001** (Segment LGD with shrinkage): inventory status `in_use`, clearance `approved_with_conditions`, review due 2027-09-08.
 
-**The number.** Portfolio ECL as at the last training date is $34.0M on $15.91B of exposure, a coverage ratio of 0.214%. Probability-weighted across three macro scenarios it is $60.1M. The severe-stress scenario alone spans $45.6M to $236.9M at 95% confidence, a factor of 5.2 end to end. That width is the correct representation of what the estimation sample can support, not a presentational weakness.
+**The number.** Portfolio ECL as at the last training date is $34.0M on $15.91B of exposure, a coverage ratio of 0.214%. Probability-weighted across three macro scenarios it is $60.1M. The severe-stress scenario alone spans $45.6M to $236.9M under coefficient-endpoint sensitivity, a factor of 5.2 end to end. This is not a validated 95% prediction interval; parameter covariance, model error, and scenario uncertainty are not fully represented.
 
 **Three findings qualify every figure in this report.**
 1. **Calibration fails under regime change (F-005, F-006).** Through 2007-2009 the scorecard predicts 0.68% where 2.17% occurred, an observed-over-expected ratio of 3.21; the challenger's is 2.80. Discrimination held (Gini 0.638 and 0.665). A model selected on AUC would have passed while understating the provision roughly threefold.
-2. **The macro overlay recovers half of that and cannot recover the rest (F-009).** Fitted on the pre-crisis window and fed the realised 2008-2009 economy, it under-predicts the default rate by a mean factor of 2.04. The estimation sample contains no house-price decline, so no estimator can recover the sensitivity. This is the central methodological limitation of the project.
+2. **The macro overlay recovers half of that and cannot recover the rest (F-009).** Fitted on the pre-crisis window and fed the realised 2008-2009 economy, it under-predicts the default rate by a mean factor of 1.79. The estimation sample contains no house-price decline, so no estimator can recover the sensitivity. This is the central methodological limitation of the project.
 3. **Drift monitoring is blind to this failure mode (F-015).** Over the same crisis quarters the worst score PSI is RISKOS_PD_001 0.0113, RISKOS_PD_002 0.0112, an order of magnitude inside the stable band, for both model families. The only control that detected the deterioration was calibration monitoring, which is structurally twelve months late.
 
-**Findings register.** 32 findings, 14 open, 8 of them high or critical. Most open findings are conclusions this project exists to report rather than defects awaiting a fix; §13 distinguishes the two. Two critical defects (R-012, R-013) were found and remediated before this report.
+**Findings register.** 33 findings, 14 open, 8 of them high or critical. Most open findings are conclusions this project exists to report rather than defects awaiting a fix; §13 distinguishes the two. Two critical defects (R-012, R-013) were found and remediated before this report.
 
 ## 2. Scope, independence, and intended use
 
 **Scope.** The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are out of scope. The project applies IFRS 9-style ECL measurement and common model-risk practices (inventory, findings, monitoring thresholds; themes also discussed in OSFI Guideline E-23). It is not a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance. Inventory 'approval' fields mean illustrative developer clearance by the project author, not an independent model-risk committee decision.
 
-**Independence.** This project is built by one person. It cannot claim organisational independence between model development and model validation. The review artefact is therefore a *developer validation with simulated second-line review*: pre-committed rules, a findings register populated at discovery, clearance conditions and review dates, and reconciliation of the inventory against what is on disk — without an independent reviewer. Every tier-1 clearance in §12 records that gap as a condition, not a waiver.
+**Independence.** This project is built by one person. It cannot claim organisational independence between model development and model validation. The review artefact is therefore a *developer validation with simulated second-line review*: recorded rules, a findings register with recorded finding dates, clearance conditions and review dates, and reconciliation of the inventory against what is on disk — without an independent reviewer. Every tier-1 clearance in §12 records that gap as a condition, not a waiver.
 
 **Intended use.** Illustrative and educational. Not for real lending or underwriting decisions, not for regulatory capital or provisioning, and not applicable to any Canadian portfolio without redevelopment on Canadian data.
 
@@ -47,7 +49,7 @@
 
 **Vintages.** Core 1999-2012 and benign contrast 2015-2019. 19 vintages ingested: 950,000 loans, 57,422,329 loan-months, per the ingest manifest.
 
-**Default definition (locked before results).** A loan is in default if it is 90 or more days past due, or if it terminates via a credit event: third-party sale, short sale, REO disposition, note sale, or charge-off. Credit-event terminations: third_party_sale, short_sale_or_charge_off, reo_disposition, whole_loan_sale. Excluded and not counted as good: defect_prior_to_credit_event. The whole-loan-sale mapping is a judgement rather than a transcription and is recorded as F-002.
+**Recorded default definition.** A loan is in default if it is 90 or more days past due, or if it terminates via a credit event: third-party sale, short sale, REO disposition, note sale, or charge-off. Credit-event terminations: third_party_sale, short_sale_or_charge_off, reo_disposition, whole_loan_sale. Excluded and not counted as good: defect_prior_to_credit_event. The whole-loan-sale mapping is a judgement rather than a transcription and is recorded as F-002.
 
 **Design.** Observation-cohort panel: at each quarter-end, every loan alive and not already 90+ days past due is labelled on whether it defaults in the next twelve months. Rows whose outcome window is not observable are dropped, never imputed. Prepayment is labelled zero and flagged as a competing risk. Splits are out-of-time and loan-disjoint by seeded hash (F-003 records the sample-size cost).
 
@@ -171,9 +173,18 @@ Recalibration corrects a level that is systematically wrong on data you have. It
 | 9 | 34,260 | 1,097 | 0.731% | 3.202% | 3.021% | 3.394% | False |
 | 10 | 34,261 | 3,827 | 5.739% | 11.170% | 10.841% | 11.508% | False |
 
+**Delinquency ablation (retrospective).** Both families were refitted without current delinquency on the existing splits. The baseline uses the saved bundles. See [study and protocol](delinquency_ablation.md).
+
+| Model | Variant | AUC | O/E |
+| --- | --- | --- | --- |
+| scorecard | with_delinquency | 0.8191 | 3.21 |
+| lightgbm | with_delinquency | 0.8324 | 2.80 |
+| scorecard | without_delinquency | 0.7567 | 3.53 |
+| lightgbm | without_delinquency | 0.7758 | 3.37 |
+
 ## 6. Champion-challenger selection
 
-**The rubric was committed before the challenger was fitted** (conf/models.yaml, verifiable in git history). Weights: calibration 0.35, stability 0.25, discrimination 0.2, explainability 0.15, latency 0.05. Calibration is weighted highest because ECL is a money number.
+**Recorded comparison rubric** (conf/models.yaml). Weights: calibration 0.35, stability 0.25, discrimination 0.2, explainability 0.15, latency 0.05. Calibration is weighted highest because ECL is a money number.
 
 | candidate | calibration (w=0.35) | stability (w=0.25) | discrimination (w=0.2) | explainability (w=0.15) | latency (w=0.05) | weighted_total |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -275,6 +286,8 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 
 ## 9. Expected credit loss and staging
 
+**Educational ECL approximation.** The empirical panel excludes loans already in default, so it supplies no Stage 3 validation. The SICR comparison lacks a transition model and older lifetime hazards are extrapolated. Passing arithmetic tests does not validate these methods for financial reporting; see F-011 and F-014.
+
 **As at the last training date, 112,266 loans, $15.91B exposure.** Each loan is projected through the fitted hazards over its own remaining term for 12-month, lifetime and origination-vintage PD (F-010). Stage 1 is measured over twelve months, stages 2 and 3 over the remaining lifetime, discounted at the loan's own rate mid-period.
 
 | Stage | Loans | EAD | Mean PD | Mean LGD | ECL | Share of ECL | Coverage |
@@ -313,7 +326,7 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 
 **Scenarios** (conf/scenarios.yaml), with the ECL each implies.
 
-| Scenario | Weight | Unemployment | HPI y/y | PD multiplier | Extrapolates | ECL | 95% low | 95% high |
+| Scenario | Weight | Unemployment | HPI y/y | PD multiplier | Extrapolates | ECL | Sensitivity low | Sensitivity high |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | base | 0.50 | 6.0% | +2.0% | 1.31 | False | $44.2M | $37.4M | $52.3M |
 | mild_recession | 0.35 | 8.0% | -5.0% | 1.91 | True | $63.5M | $39.6M | $101.2M |
@@ -325,20 +338,20 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 
 | Quarter | Unemployment | HPI y/y | Predicted | Observed | Ratio |
 | --- | --- | --- | --- | --- | --- |
-| 2008-01 | 5.0% | -12.4% | 0.92% | 1.81% | 1.97 |
-| 2008-04 | 5.3% | -15.5% | 1.02% | 2.23% | 2.19 |
-| 2008-07 | 6.0% | -17.0% | 1.13% | 2.58% | 2.28 |
-| 2008-10 | 6.9% | -18.3% | 1.28% | 2.96% | 2.31 |
-| 2009-01 | 8.3% | -18.6% | 1.52% | 3.17% | 2.08 |
-| 2009-04 | 9.3% | -16.8% | 1.66% | 3.13% | 1.89 |
-| 2009-07 | 9.6% | -11.5% | 1.56% | 2.89% | 1.85 |
-| 2009-10 | 9.9% | -5.2% | 1.44% | 2.55% | 1.77 |
+| 2008-01 | 5.0% | -12.4% | 1.05% | 1.81% | 1.73 |
+| 2008-04 | 5.3% | -15.5% | 1.16% | 2.23% | 1.92 |
+| 2008-07 | 6.0% | -17.0% | 1.29% | 2.58% | 2.00 |
+| 2008-10 | 6.9% | -18.3% | 1.47% | 2.96% | 2.02 |
+| 2009-01 | 8.3% | -18.6% | 1.74% | 3.17% | 1.82 |
+| 2009-04 | 9.3% | -16.8% | 1.90% | 3.13% | 1.65 |
+| 2009-07 | 9.6% | -11.5% | 1.78% | 2.89% | 1.62 |
+| 2009-10 | 9.9% | -5.2% | 1.64% | 2.55% | 1.55 |
 
-**Mean ratio of observed to predicted: 2.04 (F-009).** The overlay reduces the Phase 3 shortfall and does not close it. The reason is structural: the estimation sample contains no house-price decline. The HPI coefficient is -0.0193 on the pre-crisis window and -0.0424 on the full history, a factor of 2.19, which accounts almost exactly for the shortfall. The full-history figure is in-sample by construction and isolates the mechanism; it does not vindicate the model.
+**Mean ratio of observed to predicted: 1.79 (F-009).** The overlay reduces the Phase 3 shortfall and does not close it. The reason is structural: the estimation sample contains no house-price decline. The HPI coefficient is -0.0193 on the pre-crisis window and -0.0424 on the full history, a factor of 2.19, which accounts almost exactly for the shortfall. The full-history figure is in-sample by construction and isolates the mechanism; it does not vindicate the model.
 
 ## 11. Ongoing monitoring
 
-**Design.** Six rules committed before the run (conf/monitoring.yaml), each with a metric, thresholds, severity, owner and required action. Leading indicators (score PSI, feature CSI) are knowable at scoring time; lagging indicators (observed/expected, Gini, Brier reliability) need the twelve-month outcome window to close, and every alert carries the date it could first have been raised.
+**Design.** Six recorded rules (conf/monitoring.yaml), each with a metric, thresholds, severity, owner and required action. Leading indicators (score PSI, feature CSI) are knowable at scoring time; lagging indicators (observed/expected, Gini, Brier reliability) need the twelve-month outcome window to close, and every alert carries the date it could first have been raised.
 
 | Rule | Metric | Warn | Breach | Severity at breach | Basis |
 | --- | --- | --- | --- | --- | --- |
@@ -356,7 +369,7 @@ The delinquency-banded specification reproduces the empirical hazard in every st
 | RISKOS_PD_001 | woe_scorecard | 64 | 0.0113 | 262 | 105 | 12.0 | MON-02 |
 | RISKOS_PD_002 | lightgbm | 64 | 0.0112 | 246 | 104 | 12.0 | MON-02 |
 
-![Calibration collapses through 2008 while score PSI never leaves the stable band](figures/monitoring_blind_spot.png)
+![Calibration deteriorates during the crisis while score PSI stays below warning](figures/monitoring_blind_spot.png)
 
 **F-015.** Score PSI stays an order of magnitude inside the stable band through the entire crisis, for both families, while calibration collapses. PSI compares input and output distributions; what changed in 2008 was the mapping from characteristics to default, which no input-side comparison can see. Drift monitoring gave zero months of warning on the failure it exists to catch.
 
@@ -416,7 +429,7 @@ A review with no findings is not credible. Findings are recorded when found, not
 | Severity | Open | Remediated | Total |
 | --- | --- | --- | --- |
 | critical | 0 | 2 | 2 |
-| high | 8 | 7 | 15 |
+| high | 8 | 8 | 16 |
 | medium | 4 | 8 | 12 |
 | low | 2 | 1 | 3 |
 
@@ -436,7 +449,7 @@ A review with no findings is not credible. Findings are recorded when found, not
 | F-006 | high | open | 4 | Both PD candidates fail the calibration dimension under stress |
 | F-007 | low | open | 4 | The selection rubric measured the wrong proxy for explainability |
 | F-008 | high | open | 5 | Lifetime PD beyond 96 months is extrapolated, not fitted |
-| F-009 | high | open | 5 | The macro overlay under-predicts the crisis by half, and the reason is structural |
+| F-009 | high | open | 5 | The macro overlay under-predicts the crisis and extrapolates outside its fitting sample |
 | F-010 | medium | remediated | 5 | The end-to-end ECL run uses a portfolio-constant PD, degenerating the SICR sensitivity |
 | R-005 | high | remediated | 5 | Hazard imputation used the scoring batch median rather than the fitting median |
 | R-006 | medium | remediated | 5 | Competing-risk convention was unstated and asymmetric |
@@ -456,6 +469,7 @@ A review with no findings is not credible. Findings are recorded when found, not
 | F-017 | low | open | 6 | A relative threshold on the Brier reliability term is unusable because the development-sample baseline is near zero |
 | F-018 | high | remediated | 6 | The model selected by the Phase 4 rubric has no scoring-ready artefact, so every downstream figure comes from the model that lost |
 | F-019 | medium | remediated | 6 | The macro overlay is fitted on 24 quarters, not the 32 the register, the scenario config and the module docstring all assert |
+| R-014 | high | remediated | 5 | Macro backtest predictions depended on the evaluation batch |
 
 ## 14. Assumptions register
 

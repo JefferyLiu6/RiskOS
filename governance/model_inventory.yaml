@@ -113,7 +113,7 @@ models:
       awaiting deployment, not an experiment.
 
     intended_use: >-
-      As RISKOS_PD_001. Selected on the pre-committed rubric but not deployed.
+      As RISKOS_PD_001. Selected on the recorded rubric but not deployed.
     prohibited_use: >-
       As RISKOS_PD_001, and additionally not to be reported as the model behind
       any published figure until a scoring-ready artefact exists and has been

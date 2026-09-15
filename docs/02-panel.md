@@ -3,7 +3,7 @@
 > Detailed reference. Start with the [demo](../README.md); use the
 > [reference index](README.md) to find a specific topic.
 
-**Status: complete.** 3,442,585 panel rows · 54,728,617 risk-set rows · portfolio
+**Implemented:** 3,442,585 panel rows · 54,728,617 risk-set rows · portfolio
 default rate 0.868%.
 
 > This is where the target variable gets defined and the experiment gets

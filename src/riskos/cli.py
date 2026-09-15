@@ -101,6 +101,23 @@ def challenger() -> None:
 
 
 @app.command()
+def ablate() -> None:
+    """Phase 4 — refit without delinquency and write a separate sensitivity study."""
+    import polars as pl
+
+    from riskos.models.ablation import run
+
+    results = run()
+    crisis = results.filter((pl.col("split") == "oot_stress") & (pl.col("group") == "all"))
+    typer.echo("Delinquency ablation: 2007-09 crisis, identical observations, uncalibrated models.")
+    with pl.Config(tbl_width_chars=100, fmt_str_lengths=24, float_precision=4):
+        typer.echo(
+            crisis.select("model", "variant", "auc", pl.col("observed_over_expected").alias("O/E"))
+        )
+    typer.echo("All splits and cohorts: reports/figures/delinquency_ablation.csv")
+
+
+@app.command()
 def evaluate() -> None:
     """Phase 3/4 — show ranking, calibration, and drift from saved results."""
     import polars as pl

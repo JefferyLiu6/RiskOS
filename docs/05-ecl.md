@@ -3,17 +3,17 @@
 > Detailed reference. Start with the [demo](../README.md); use the
 > [reference index](README.md) to find a specific topic.
 
-**Status: runnable end to end.** Two cause-specific hazards, 304 LGD segments,
+**Status: runnable educational approximation; methodology remains limited.** Two cause-specific hazards, 304 LGD segments,
 a staged and discounted ECL under three weighted scenarios, and a crisis
-backtest that the overlay fails by half.
+backtest that still materially under-predicts defaults.
 
 > Three things in this chapter matter more than the ECL number. First, the
 > lifetime PD comes from a fitted hazard, not from repeating year one: chaining
 > the 12-month PD out to 300 months would have overstated lifetime default by a
 > factor of five. Second, the LGD is **not clipped** to [0, 1], because 11.7% of
 > observed losses genuinely fall outside it. Third, the macro overlay, fed the
-> real 2008–2009 economy, predicts half the defaults that happened — and the
-> reason is structural, so no estimator fixes it. That last one is the central
+> real 2008–2009 economy, still under-predicts defaults, with limited
+> support for extrapolation from its small pre-crisis estimation sample. That last one is the central
 > limitation of the whole project.
 
 **Run it:** `uv run riskos hazard` then `uv run riskos ecl` (~10 minutes)
@@ -242,12 +242,15 @@ less.
 
 ### Scenarios
 
-| Scenario | Weight | Unemployment | HPI y/y | PD multiplier | Extrapolates | ECL | 95% band |
+| Scenario | Weight | Unemployment | HPI y/y | PD multiplier | Extrapolates | ECL | Coefficient sensitivity |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Base | 0.50 | 6.0% | +2% | 1.31 | no | $44.2M | $37.4M – $52.3M |
 | Mild recession | 0.35 | 8.0% | −5% | 1.91 | **yes** | $63.5M | $39.6M – $101.2M |
 | Severe stress | 0.15 | 10.0% | −20% | 3.24 | **yes** | $105.2M | $45.6M – $236.9M |
 | **Probability-weighted** | | | | | | **$60.1M** | |
+
+These ranges propagate coefficient interval endpoints. They are sensitivity
+ranges, not validated joint prediction intervals for portfolio losses.
 
 The severe band spans a factor of five from end to end. That is not a weakness
 of the presentation; it is the correct representation of what 24 benign quarters
@@ -259,24 +262,26 @@ the loss measurement.
 
 Feed the model fitted on 1999–2006 the **realised** 2008–2009 economy:
 
-| Quarter | Unemployment | HPI y/y | Predicted | Observed | Ratio |
-| --- | --- | --- | --- | --- | --- |
-| 2008Q1 | 5.0% | −12.4% | 0.92% | 1.81% | 1.97 |
-| 2008Q4 | 6.9% | −18.3% | 1.28% | 2.96% | 2.31 |
-| 2009Q1 | 8.3% | −18.6% | 1.52% | 3.17% | 2.08 |
-| 2009Q4 | 9.9% | −5.2% | 1.44% | 2.55% | 1.77 |
+| Quarter | Predicted defaults | Observed defaults | Observed / expected |
+| --- | ---: | ---: | ---: |
+| 2008-01-01 | 1.05% | 1.81% | 1.73 |
+| 2008-04-01 | 1.16% | 2.23% | 1.92 |
+| 2008-07-01 | 1.29% | 2.58% | 2.00 |
+| 2008-10-01 | 1.47% | 2.96% | 2.02 |
+| 2009-01-01 | 1.74% | 3.17% | 1.82 |
+| 2009-04-01 | 1.90% | 3.13% | 1.65 |
+| 2009-07-01 | 1.78% | 2.89% | 1.62 |
+| 2009-10-01 | 1.64% | 2.55% | 1.55 |
 
-Mean ratio of observed to predicted: **2.04**. The overlay reduces the Phase 3
-shortfall from 3.2× to 2.0× and does not close it.
+The corrected mean ratio is **1.79**. The previous 2.04 estimate used evaluation
+sample means to center predictions; R-014 replaces that calculation with the
+fitted intercept. Appending unrelated quarters now leaves each prediction unchanged.
 
-**The reason is structural (F-009).** Year-on-year HPI in the estimation sample
-runs from +1.7% to +17.0%. It contains **no house-price decline at all**. The
-fitted HPI coefficient is −0.019; on the full 1999–2019 history it is −0.042, a
-factor of 2.19, which accounts almost exactly for the 2.04 shortfall. No
-estimation technique recovers a sensitivity the sample does not contain. A
-stress overlay calibrated on benign data under-predicts stress, and the honest
-output is the range, the comparison fit, and this sentence in the executive
-summary.
+The 24-point fitting sample contains no house-price decline. Crisis scenarios
+therefore extrapolate beyond its support, and the unemployment coefficient is
+not statistically distinguishable from zero. A full-history comparison includes
+the crisis itself and is not an independent validation. This remains a limited
+macro sensitivity experiment, not a validated forecasting model.
 
 ---
 
@@ -327,7 +332,7 @@ own checks rather than by a reader.
 | ID | Severity | Status | Title |
 | --- | --- | --- | --- |
 | F-008 | high | open | Lifetime PD beyond 96 months is extrapolated, not fitted |
-| F-009 | high | open | The macro overlay under-predicts the crisis by half; the reason is structural |
+| F-009 | high | open | The macro overlay under-predicts the crisis and extrapolates beyond the fitting sample |
 | F-010 | medium | remediated | A portfolio-constant PD degenerated the SICR sensitivity |
 | F-011 | high | partial | The hazard cannot detect SICR; staging collapses toward the backstop |
 | F-012 | medium | remediated | Delinquency state cannot enter as a linear term (target contamination) |

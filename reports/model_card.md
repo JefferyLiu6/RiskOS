@@ -1,6 +1,6 @@
 # RiskOS — Model Cards
 
-Generated 2026-09-14 from governance/model_inventory.yaml, the bundle manifests, the Phase 4 comparison table and the findings register.
+Generated 2026-09-15 from governance/model_inventory.yaml, the bundle manifests, the Phase 4 comparison table and the findings register.
 
 > The underlying portfolio is U.S. residential mortgage data, because comparable public Canadian loan-level default and loss data is not available. Canadian-specific products (for example CMHC-insured mortgages and HELOCs) are out of scope. The project applies IFRS 9-style ECL measurement and common model-risk practices (inventory, findings, monitoring thresholds; themes also discussed in OSFI Guideline E-23). It is not a regulatory implementation, does not reproduce any institution's ECL system, and makes no claim of OSFI compliance. Inventory 'approval' fields mean illustrative developer clearance by the project author, not an independent model-risk committee decision.
 
@@ -66,7 +66,7 @@ Generated 2026-09-14 from governance/model_inventory.yaml, the bundle manifests,
 
 **Purpose.** Gradient-boosted challenger to RISKOS_PD_001, selected by the Phase 4 rubric at 0.4035 against 0.3648.
 
-**Intended use.** As RISKOS_PD_001. Selected on the pre-committed rubric but not deployed.
+**Intended use.** As RISKOS_PD_001. Selected on the recorded rubric but not deployed.
 
 **Prohibited use.** As RISKOS_PD_001, and additionally not to be reported as the model behind any published figure until a scoring-ready artefact exists and has been monitored. See F-018.
 

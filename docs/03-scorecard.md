@@ -3,7 +3,7 @@
 > Detailed reference. Start with the [demo](../README.md); use the
 > [reference index](README.md) to find a specific topic.
 
-**Status: complete.** 15 features · AUC 0.894 train / 0.819 OOT-stress · **and the
+**Implemented:** 15 features · AUC 0.894 train / 0.819 OOT-stress · **and the
 headline finding.**
 
 > This phase produces the project's central result: **discrimination held up and
@@ -227,7 +227,7 @@ This is the payoff for chasing a suspicious number instead of shipping it.
 > can impose rather than hope for. Missing values become their own bin instead
 > of being imputed. And the explanation is exact — points sum to the score with
 > zero residual, which SHAP can't offer for a GBM. Phase 4 fits the GBM as a
-> challenger and compares them on a rubric committed before the comparison runs.
+> challenger and compares them on a recorded comparison rubric.
 
 **"What's the most important thing you found?"** *(F-005)*
 > That discrimination and calibration degrade at completely different rates.
@@ -353,10 +353,10 @@ these documents.
 - **F-005 (high)** — the calibration gap. Phase 4 tries isotonic and Platt;
   Phase 5's macro overlay is the real remediation. Expect it to reduce, not
   eliminate.
-- **F-004 (medium)** — refit without delinquency status and report both.
+- **F-004 (medium)** — the [delinquency ablation](../reports/delinquency_ablation.md) now reports both variants; interpretation remains limited.
 - **F-001** — every benign-split metric now reported twice, permanently.
 - Phase 4 must compare **calibrated and uncalibrated** for both models on both
-  OOT splits, with rubric weights committed **before** the comparison runs.
+  OOT splits, with recorded rubric weights.
 
 ---
 

@@ -17,6 +17,7 @@ import polars as pl
 from riskos.ecl import engine, macro
 from riskos.ecl import lgd as lgd_mod
 from riskos.log import get_logger
+from riskos.panel.alignment import require_same_observations
 
 log = get_logger(__name__)
 
@@ -45,7 +46,10 @@ def attach_lgd(portfolio: pl.DataFrame) -> np.ndarray:
         segments.select(["ltv_band", "property_state", "shrunk_lgd"]),
         on=["ltv_band", "property_state"],
         how="left",
+        validate="m:1",
+        maintain_order="left",
     )
+    require_same_observations(portfolio, joined)
     fallback = float(usable["lgd"].to_numpy().mean())
     return joined["shrunk_lgd"].fill_null(fallback).to_numpy()
 
@@ -58,7 +62,7 @@ def per_loan_pds(
     Each loan is projected through the fitted hazards using its own covariates
     and its own age path, truncated at its own remaining term. The
     origination-vintage PD projects the SAME loan from age zero over its
-    original term, which is the correct comparator for the IFRS 9 SICR test:
+    original term, which is an illustrative comparator for the SICR sensitivity:
     "has this loan's lifetime risk increased significantly since ITS
     origination", not since the portfolio average.
 
@@ -85,7 +89,9 @@ def per_loan_pds(
         results[cause], _ = hazard.fit_cause(design, events, clusters, cause)
 
     # The panel needs the same time-varying covariates the model was fitted on.
-    portfolio = with_time_varying(portfolio)
+    enriched = with_time_varying(portfolio)
+    require_same_observations(portfolio, enriched)
+    portfolio = enriched
     origination_view = at_origination(portfolio)
 
     remaining = portfolio["remaining_months_to_legal_maturity"].to_numpy().astype(np.int64)

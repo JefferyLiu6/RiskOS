@@ -64,3 +64,16 @@ checks. Inventory clearance is illustrative developer clearance only.
 
 `make all` runs the full pipeline, including extensions. Individual targets are
 listed in the [Makefile](../Makefile).
+
+## Public integration checks and retrospective ablation
+
+```bash
+uv run pytest tests/test_ecl_integration.py -v  # synthetic inputs; no licensed data
+make ablate                                  # requires the existing panel and baseline bundles
+make report                                  # refresh reports and the ablation chart
+```
+
+`make ablate` writes a separate CSV and run manifest. It refits without current
+delinquency and reuses the existing evaluation splits. The manifest contains input
+and source hashes, row counts, fitted features, and the LightGBM grid. It preserves
+the main models. [Validation coverage](validation.md) describes what each check establishes.

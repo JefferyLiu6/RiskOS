@@ -159,3 +159,51 @@ def discrimination_vs_calibration(metrics: pl.DataFrame, out: Path | None = None
     plt.close(fig)
     log.info("wrote_figure", path=str(out))
     return out
+
+
+def delinquency_ablation(metrics: pl.DataFrame, out: Path) -> Path:
+    """Paired crisis metrics from the retrospective ablation, with no new fitting."""
+    frame = metrics.filter((pl.col("split") == "oot_stress") & (pl.col("group") == "all"))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    for ax, metric, title in zip(
+        axes,
+        ("auc", "observed_over_expected"),
+        ("Ranking · AUC (higher is better)", "Calibration · observed / expected (ideal: 1)"),
+        strict=True,
+    ):
+        for y, family in enumerate(("lightgbm", "scorecard")):
+            pair = {
+                r["variant"]: r[metric] for r in frame.filter(pl.col("model") == family).to_dicts()
+            }
+            values = [pair["with_delinquency"], pair["without_delinquency"]]
+            ax.plot(values, [y, y], color="#c8cdd3", linewidth=3, zorder=1)
+            for value, color, offset in zip(
+                values, ("#2a78d6", "#eb6834"), (0.13, -0.22), strict=True
+            ):
+                ax.scatter(value, y, color=color, s=70, zorder=2)
+                ax.text(value, y + offset, f"{value:.3f}", ha="center", fontsize=10, color=color)
+        ax.set_yticks([0, 1], ["LightGBM", "Scorecard"])
+        ax.set_ylim(-0.5, 1.5)
+        ax.set_xlim((0.5, 1) if metric == "auc" else (0.8, 4.1))
+        if metric != "auc":
+            ax.axvline(1, color="#888", linestyle="--", linewidth=1)
+        ax.set_title(title, loc="left", fontsize=10)
+        ax.grid(axis="x", alpha=0.2)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+    fig.suptitle(
+        "How much does current delinquency contribute?", x=0.07, ha="left", fontweight="bold"
+    )
+    fig.text(0.07, 0.06, "Blue: saved baseline   Orange: refitted without delinquency", fontsize=10)
+    fig.text(
+        0.07,
+        0.01,
+        f"2007-09 crisis · {frame['n'][0]:,} identical observations · retrospective sensitivity, uncalibrated",
+        fontsize=9,
+        color="#555",
+    )
+    fig.tight_layout(rect=(0, 0.13, 1, 0.90))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=180)
+    plt.close(fig)
+    return out

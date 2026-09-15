@@ -218,16 +218,16 @@ def backtest(fit_result: MacroFit, series: pl.DataFrame, window: tuple[str, str]
     """
     start_year, end_year = int(window[0][:4]), int(window[1][:4])
     actual = series.filter(pl.col("quarter").dt.year().is_between(start_year, end_year))
-    mean_u = float(series["unemployment"].to_numpy().mean())
-    mean_h = float(series["hpi_yoy"].to_numpy().mean())
-    base_logit = fit_result.mean_logit_default_rate
-
     rows = []
     for row in actual.to_dicts():
-        shift = fit_result.coefficients["unemployment"] * (row["unemployment"] - mean_u) + (
-            fit_result.coefficients["hpi_yoy"] * (row["hpi_yoy"] - mean_h)
+        # Use the fitted intercept. Centering on the evaluation batch makes a
+        # fixed quarter's prediction depend on which other quarters are passed.
+        linear = (
+            fit_result.coefficients["const"]
+            + fit_result.coefficients["unemployment"] * row["unemployment"]
+            + fit_result.coefficients["hpi_yoy"] * row["hpi_yoy"]
         )
-        predicted = float(sigmoid(np.array([base_logit + shift]))[0])
+        predicted = float(sigmoid(np.array([linear]))[0])
         rows.append(
             {
                 "quarter": row["quarter"],
