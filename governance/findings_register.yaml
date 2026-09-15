@@ -156,17 +156,17 @@ findings:
     remediation: >-
       Retained, because a 12-month IFRS 9 PD model is expected to condition on
       delinquency at the reporting date - the standard's own 30-DPD Stage 2
-      backstop is exactly this information. However the scorecard must also be
-      fitted and reported WITHOUT it, so the contribution of origination credit
-      quality is visible separately, and so the Phase 5 staging logic is not
-      circular. Update 2026-09-15: both PD families were evaluated with and
+      backstop is exactly this information. The requested sensitivity study
+      refits without delinquency to quantify its contribution; other behavioural
+      covariates remain, so this does not isolate origination credit quality or
+      validate Phase 5 staging. Completed 2026-09-15: both PD families were evaluated with and
       without this feature on the full existing panel. Crisis AUC moves from
       0.8191 to 0.7567 (scorecard) and 0.8324 to 0.7758 (LightGBM).
       See reports/figures/delinquency_ablation.csv and its run manifest.
       This is a retrospective sensitivity study, not independent validation.
 
     residual_risk: >-
-      The missing ablation is now reported, but this remains a behavioural
+      The ablation is now reported, but this remains a behavioural
       model with current-state covariates and calibration failure under stress.
       Removing delinquency does not make it an origination underwriting model.
       The finding remains open as an interpretation and validation limitation.

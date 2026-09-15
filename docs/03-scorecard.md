@@ -243,9 +243,10 @@ This is the payoff for chasing a suspicious number instead of shipping it.
 > already excludes loans at 90+ DPD, so these are loans 30–89 days late that
 > haven't defaulted, and no forward information is used. But it *is*
 > mechanically close to the target: a loan at 60–89 DPD needs one more missed
-> payment to meet the definition. So it's logged as F-004, and the model has to
-> be refitted without it so the contribution of origination credit quality is
-> visible separately. What I didn't do was raise the threshold until it stopped
+> payment to meet the definition. F-004 records this limitation. The
+> [ablation study](../reports/delinquency_ablation.md) refits both families without
+> delinquency; other behavioural covariates remain, so it does not isolate
+> origination credit quality. What I didn't do was raise the threshold until it stopped
 > firing — the ceiling is still 0.9 and each exception is cleared individually
 > with written evidence.
 

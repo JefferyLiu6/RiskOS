@@ -218,8 +218,9 @@ That said, the honest conclusion is narrower than the project initially assumed:
 
 LightGBM is selected **subject to**:
 
-1. **Not approved for provisioning without the Phase 5 macro overlay.** O/E of
-   2.80 under stress understates ECL by roughly a factor of three (F-006).
+1. **Not approved for provisioning.** Crisis defaults are 2.80 times the
+   challenger’s predictions (F-006). The Phase 5 macro extension also
+   under-predicts crisis defaults (F-009); it does not resolve clearance.
 2. **The scorecard is retained as the reference model**, not discarded. It is
    the interpretability benchmark and the fallback if the overlay cannot be
    made to work.
@@ -228,8 +229,9 @@ LightGBM is selected **subject to**:
    monitor would have raised **nothing** while the model was under-predicting
    defaults threefold. This is the most operationally important line in the
    memo.
-4. **The delinquency-status dependence (F-004) must be quantified** before
-   either model is relied on, for both candidates.
+4. **Delinquency-status dependence is quantified for both candidates** in the
+   [ablation study](delinquency_ablation.md). F-004 remains open because other
+   behavioural covariates remain and stress calibration is unresolved.
 5. **Re-review on any material change** to the candidate pool, the monotone
    constraints, or the grid.
 

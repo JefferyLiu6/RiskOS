@@ -274,11 +274,11 @@ communication-design advantage, not a mathematical one.**
 
 ## 8. Conditions on the selection
 
-1. **Not approved for provisioning without the Phase 5 macro overlay** (F-006)
+1. **Not approved for provisioning**: crisis calibration fails (F-006), and the Phase 5 macro extension does not resolve it (F-009)
 2. **The scorecard is retained as the reference model**, not discarded — the
    interpretability benchmark and the fallback
 3. **Monitoring must track calibration drift, not just PSI**
-4. **F-004 (delinquency dominance) must be quantified** for both candidates
+4. **F-004 (delinquency dominance) is quantified** for both candidates in the [ablation study](../reports/delinquency_ablation.md); behavioural interpretation and validation limits remain
 5. **Re-review on any change** to the candidate pool, constraints, or grid
 
 Full memo: [`reports/model_selection_memo.md`](../reports/model_selection_memo.md)
@@ -286,5 +286,5 @@ Full memo: [`reports/model_selection_memo.md`](../reports/model_selection_memo.m
 ---
 
 **Next:** Phase 5 — discrete-time hazard with competing risks, empirical LGD
-with tail investigation, the ECL engine, and the macro overlay that F-006 says
-is mandatory rather than optional.
+with tail investigation, the ECL engine, and a macro overlay tested against
+the calibration failure in F-006.
