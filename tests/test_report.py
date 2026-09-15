@@ -17,7 +17,7 @@ import pytest
 from riskos.report import build_model_card, build_report, load_sources, render
 from riskos.report.sources import Sources
 
-FULL_ESTATE = (
+SAVED_RESULTS = (
     Path("reports/figures/ecl_by_stage.csv").exists()
     and Path("reports/figures/champion_challenger_metrics.csv").exists()
 )
@@ -121,7 +121,7 @@ def test_the_report_carries_the_scope_statement_verbatim() -> None:
     assert "makes no claim of OSFI compliance" in report
 
 
-@pytest.mark.skipif(not FULL_ESTATE, reason="needs the Phase 4 and Phase 5 artefacts")
+@pytest.mark.skipif(not SAVED_RESULTS, reason="needs the saved Phase 4 and Phase 5 results")
 def test_the_headline_ecl_is_the_artefact_total() -> None:
     """The one number a reader will quote must be the CSV's, not a transcription."""
     s = load_sources()
@@ -131,10 +131,25 @@ def test_the_headline_ecl_is_the_artefact_total() -> None:
     report = build_report(s)
 
     assert f"Portfolio ECL as at the last training date is {render.money(total)}" in report
-    assert not s.missing, f"artefacts missing on a full estate: {s.missing}"
 
 
-@pytest.mark.skipif(not FULL_ESTATE, reason="needs the Phase 4 artefacts")
+@pytest.mark.needs_data
+@pytest.mark.skipif(
+    not Path("models").exists(), reason="local model artifacts absent; rebuild the pipeline first"
+)
+def test_a_locally_built_report_has_all_its_artefacts() -> None:
+    """Saved CSVs alone do not imply that the ignored model artifacts exist.
+
+    When models/ is present, retain the full completeness check so a partial
+    build or a deleted artifact still fails.
+    """
+    s = load_sources()
+    build_report(s)
+
+    assert not s.missing, f"artefacts missing on a local estate: {s.missing}"
+
+
+@pytest.mark.skipif(not SAVED_RESULTS, reason="needs the saved Phase 4 and Phase 5 results")
 def test_the_stress_calibration_ratios_come_from_the_comparison_table() -> None:
     cc = pl.read_csv("reports/figures/champion_challenger_metrics.csv")
     row = cc.filter(

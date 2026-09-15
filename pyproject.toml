@@ -1,7 +1,7 @@
 [project]
 name = "riskos"
 version = "0.1.0"
-description = "Credit risk, expected-credit-loss, and model governance platform"
+description = "Mortgage default modelling and monitoring demo with ECL extensions"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pydantic>=2.9",

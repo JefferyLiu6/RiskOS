@@ -1,129 +1,91 @@
 # RiskOS
 
-**End-to-end credit loss modelling on residential mortgages: build PD/LGD/ECL models, test them through the 2008 crisis, and put monitoring and inventory checks around them.**
+### Credit risk modelling under stress
 
-Portfolio of ~950,000 U.S. mortgages (Freddie Mac sample). Methods follow **IFRS 9** expected-credit-loss ideas and common **model-risk** practices (inventory, findings, monitoring thresholds). This is a learning project — not a bank system and not a regulatory filing.
+An end-to-end mortgage-risk study using [**950,000 loans and 57 million loan-months**](reports/validation_report.md#3-data-target-and-experimental-design)
+from the Freddie Mac sample. I built a logistic scorecard and LightGBM challenger,
+tested them through the financial crisis, and examined whether monitoring would
+have caught their failure.
 
-![Through 2008, predicted defaults fell far short of what occurred, while a common score-drift check (PSI) stayed in the “stable” range](reports/figures/monitoring_blind_spot.png)
+**Main result:** both models retain useful ranking power, but predict far fewer
+defaults than occur. Score-distribution drift stays below warning during the crisis.
 
-## What this shows
+[Five-minute walkthrough](docs/demo.md) · [Code and design](#design-decisions-you-can-inspect) · [Run locally](#run-locally) · [Technical reference](docs/README.md)
 
-| Result | Meaning |
-| --- | --- |
-| Ranking held, levels did not | Both PD models kept most of their ranking power in the crisis, but predicted only about one-third of the defaults that occurred — so provisions based on those PDs would have been far too low |
-| PSI did not flag it | Score PSI stayed very low (“stable”) while calibration broke. That gap is logged as a monitoring-design finding (F-015) |
-| Macro overlay is incomplete | A pre-crisis macro overlay given the real 2008–09 economy still under-predicted defaults by roughly 2× |
-| Checks found concrete bugs | Including a join that assigned another loan’s PD after a row reorder, and a gitignore mistake that had excluded the modelling package from version control |
+![Quarterly defaults exceed model predictions during the crisis while score PSI stays below warning](reports/figures/monitoring_blind_spot.png)
 
-Findings are logged as they appear (32 total; some remain open on purpose as limitations). Assumptions live in config and are checked by tests. The validation report is generated from pipeline outputs (`make report`).
+*Shading marks the 2007–09 crisis. The top panel compares observed with expected
+defaults; the bottom measures changes in score distributions. Default outcomes
+become observable 12 months after each observation, so the top panel is retrospective.*
 
-## What was built
+## What the experiment found
 
-| Area | Contents |
-| --- | --- |
-| Modelling | WOE logistic PD scorecard, LightGBM challenger, calibration, hazard, LGD, staged/discounted ECL |
-| Evaluation | Discrimination, calibration (O/E), crisis window, scenario overlay |
-| Controls | Monitoring rules, findings register, model inventory, reconciliation vs artefacts on disk |
-| Serving | Small scoring API that only loads the inventory’s designated model and returns listed limitations |
+| Model · 2007–09 crisis | AUC (higher is better) | Predicted default rate | Observed default rate | Observed / expected (ideal: 1) |
+| --- | ---: | ---: | ---: | ---: |
+| Logistic scorecard | 0.819 | 0.68% | 2.17% | 3.21× |
+| LightGBM challenger | 0.832 | 0.78% | 2.17% | 2.80× |
 
-### Pipeline
+AUC measures ranking. Observed / expected measures whether predicted totals match
+outcomes. LightGBM improves both measures, but **neither model estimates crisis
+default levels adequately**. Low score drift does not establish accurate probabilities.
 
-| Phase | What it does |
-| --- | --- |
-| 1 · Ingest | Parse and validate loan-level files |
-| 2 · Panel | Build observation dataset with out-of-time splits and leakage checks |
-| 3 · Scorecard | Fit champion PD model |
-| 4 · Challenger | Fit LightGBM, calibrate, compare under a rubric fixed before fitting |
-| 5 · ECL | Lifetime hazards, LGD, ECL, macro scenarios, backtest |
-| 6 · Controls | Monitor, reconcile inventory, optional scoring service |
-| 7 · Report | Generate validation report and model cards |
+[Source CSV](reports/figures/champion_challenger_metrics.csv): uncalibrated models,
+`oot_stress` rows. These whole-period ratios differ from the quarterly peaks above.
+The [selection memo](reports/model_selection_memo.md) records the rubric's preference
+for LightGBM. The illustrative scoring service still uses the scorecard;
+[selection and clearance are separate decisions](governance/model_inventory.yaml).
 
-Detail and scale numbers: [docs](docs/00-business-context.md) and [`reports/validation_report.md`](reports/validation_report.md).
+## Design decisions you can inspect
 
-## Quick links
+| Decision | Why it matters | Evidence |
+| --- | --- | --- |
+| Split by time and separate loans; exclude post-outcome fields | Test generalisation without leaking future information | [Panel construction](src/riskos/panel/build.py) · [leakage checks](tests/test_leakage.py) |
+| Give both models the same candidate features and use a fixed comparison rubric | Make the comparison interpretable and limit result-driven tuning | [Training and rubric config](conf/models.yaml) · [selection tests](tests/test_selection_and_calibration.py) |
+| Track when default outcomes become observable | Avoid claiming that a retrospective signal was available in real time | [Performance monitoring](src/riskos/monitor/performance.py) · [timing tests](tests/test_monitoring.py) |
+| Turn discovered defects into regression tests | Protect fixes, including missing-value drift and look-ahead in forbearance labels | [Review regression tests](tests/test_review_regressions.py) |
 
-1. [`reports/validation_report.md`](reports/validation_report.md) — start with the executive summary  
-2. [`governance/findings_register.yaml`](governance/findings_register.yaml) — issues found and status  
-3. [`governance/model_inventory.yaml`](governance/model_inventory.yaml) — models, owners, limitations  
-4. [`docs/06-monitoring.md`](docs/06-monitoring.md) — monitoring design and the PSI gap  
+The [selection memo](reports/model_selection_memo.md#6-a-correction-to-the-rubrics-own-explainability-scoring)
+also records a mistaken assumption about SHAP explainability and the sensitivity
+analysis used to check whether correcting it changes the decision.
 
-Example API response (crisis-period loan, one payment late). `approval_status` here means **developer clearance for this project**, not an independent bank model approval:
+## What is implemented
 
-```json
-{
-  "result": {
-    "pd_12m": 0.1051,
-    "score": 548.9,
-    "principal_drivers": [
-      {"feature": "current_loan_delinquency_status", "points": -93.69},
-      {"feature": "number_of_borrowers", "points": -11.66},
-      {"feature": "original_interest_rate", "points": 10.43}
-    ]
-  },
-  "governance": {
-    "model_id": "RISKOS_PD_001",
-    "version": "1.0.0",
-    "approval_status": "approved_with_conditions",
-    "review_due": "2027-08-31",
-    "limitations": ["F-004", "F-005", "F-015", "F-018"],
-    "config_drift": []
-  }
-}
-```
+**Core:** data ingestion → observation panel → default models → crisis evaluation → monitoring.
 
-## How controls work in this repo
+Python 3.12 · Polars / DuckDB · scikit-learn / LightGBM · pytest
 
-- **Assumptions** — numeric assumptions in `conf/assumptions.yaml`; tests fail if code drifts from them  
-- **Findings** — recorded when found (including cases where the first diagnosis was wrong)  
-- **Pre-committed rules** — selection rubric and monitoring thresholds fixed in git before the runs they govern  
-- **Inventory check** — `riskos registry` compares inventory ↔ artefacts ↔ findings and exits non-zero on serious gaps  
-- **Serving** — `riskos serve` does not take an arbitrary model path; it serves what the inventory marks as in use  
+The repository also contains lifetime hazards, loss-given-default, expected credit
+loss, macro scenarios, inventory reconciliation, a FastAPI scoring service, and a
+report generator. These are supporting extensions; the core walkthrough stands on
+its own. The [reference index](docs/README.md) maps each component to its code,
+configuration, and evidence.
 
-These are project disciplines inspired by model-risk practice (including themes in OSFI Guideline E-23). They are not a claim of institutional compliance.
+## Run locally
 
-## Scope and limits
+**No setup needed to review:** the [walkthrough](docs/demo.md), figures, and aggregate
+CSVs render directly on GitHub. Licensed loan-level data and fitted models are not included.
 
-> **Data:** U.S. conforming residential mortgages. Public Canadian loan-level default/loss data is not available in comparable form, so this does not cover Canadian-specific products (e.g. CMHC-insured mortgages, HELOCs) or a Canadian lender’s book.  
-> **Framework:** IFRS 9-style ECL measurement and common model-risk controls. **Not** a regulatory implementation, **not** any institution’s ECL system, **no** claim of OSFI compliance.  
-> **Review:** One author. This is developer validation with a *simulated* second-line review — not organisationally independent validation. Inventory “approval” fields mean illustrative clearance by the author, with conditions and review dates recorded explicitly.
-
-Open limitations that imply further work include stronger monitoring for the PSI blind spot (F-015), SICR/lifetime-PD design, and monitoring for hazard/LGD (currently unmonitored tier-1 entries — the registry reports that).
-
-## Docs
-
-- [Business context](docs/00-business-context.md) — why loss provisioning matters (**read first**)  
-- [Ingest](docs/01-ingest.md) · [Panel](docs/02-panel.md) · [Scorecard](docs/03-scorecard.md) · [Challenger](docs/04-challenger.md) · [ECL](docs/05-ecl.md) · [Monitoring](docs/06-monitoring.md)  
-- Generated: [`reports/validation_report.md`](reports/validation_report.md) · [`reports/model_card.md`](reports/model_card.md)
-
-## Reproduce
-
-Committed: aggregate CSVs/figures under `reports/`, governance registers, generated report. Not committed: licensed loan-level data.
+With Python 3.12 and `uv` installed, from the repository root:
 
 ```bash
-make setup     # uv sync
-make test      # unit/integration tests (data-dependent tests skip with a reason)
-make lint      # ruff, mypy --strict
+make setup       # install locked dependencies; first setup requires network access
+make evaluate    # display the saved comparison; no source data or fitted models needed
+make test        # run tests; checks requiring unavailable local artifacts skip
+make lint        # Ruff lint/format checks and strict mypy
 ```
 
-**Data.** Register for Freddie Mac SFLLD via Clarity Data Intelligence (free). Download sample vintages **1999–2012** and **2015–2019**, unpack to `data/raw/`, set layout version in `conf/data.yaml`. No scraper in this repo. FRED series need a key in `.env` (see `.env.example`).
+The [CI workflow](.github/workflows/ci.yml) runs lint, type checks, and tests on pushes
+and pull requests. [Reproduction instructions](docs/reproduce.md) cover licensed
+data access and rebuilding the pipeline. Saved results are evidence from prior runs;
+`make evaluate` does not retrain models.
 
-```bash
-make ingest && make panel && make train && make challenger
-make hazard && make ecl && make monitor && make registry
-make serve     # local scoring API
-make report    # refresh validation report and model cards
-```
+## Limits and next steps
 
-```
-conf/          typed YAML config (assumptions live here)
-governance/    inventory, findings, alerts, reconciliation outputs
-docs/          phase write-ups
-src/riskos/    ingest → panel → models → ecl → monitor → registry → serve → report
-tests/
-reports/       generated report, model cards, figures
-data/          gitignored (local/raw only)
-```
+- **Calibration under stress remains unresolved.** The macro extension still under-predicts defaults even when supplied with realised crisis conditions.
+- **Monitoring needs better early warning.** Outcome-based checks are delayed; feature-drift rules also produce frequent development-sample alarms.
+- **External validity is limited.** U.S. mortgage data, simplified ECL assumptions, and single-author developer validation do not establish suitability for another portfolio.
 
-## Intended use
-
-Educational only. Not for lending, underwriting, regulatory capital, or provisioning. Not transferable to a Canadian portfolio without redevelopment on Canadian data.
+See the [validation report](reports/validation_report.md) for the evidence and open
+findings. This is an educational project using IFRS 9-style ideas, not an independently
+validated system for lending, capital, or provisioning. Inventory “approval” means
+illustrative developer clearance.

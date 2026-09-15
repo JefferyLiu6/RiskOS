@@ -1,5 +1,8 @@
 # Phase 2 — Panel, risk set, and labels
 
+> Detailed reference. Start with the [demo](../README.md); use the
+> [reference index](README.md) to find a specific topic.
+
 **Status: complete.** 3,442,585 panel rows · 54,728,617 risk-set rows · portfolio
 default rate 0.868%.
 
@@ -210,7 +213,7 @@ What happened instead:
 > assistance field only exists from 2014. A code review traced it to DuckDB's
 > `arg_min` ignoring null values, so the flag reached *forward* to a later
 > month's code. Corrected figures: 54.9%, and exactly zero before 2014. Logged
-> as **R-001**, and covered in [Phase 3](03-scorecard.md#7-what-a-code-review-caught).
+> as **R-001**, and covered in [Phase 3](03-scorecard.md#6-what-a-code-review-caught).
 
 **Why this matters.** It shows a
 suspicious number being chased rather than shipped, a distinction held between

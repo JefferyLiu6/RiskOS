@@ -1,7 +1,7 @@
 # Lint, type-check, and test on every push and pull request.
 #
 # The loan-level data is licensed and never committed, so every test that needs
-# the built panel or a fitted bundle is marked `needs_data` and skips here. What
+# the built panel or a fitted bundle skips when those inputs are absent. What
 # CI does enforce is everything that can be checked without data: the
 # assumptions register matching the constants in code, the monitoring rulebook
 # matching the register, the inventory schema, the metric implementations
@@ -42,3 +42,6 @@ jobs:
 
       - name: Test
         run: uv run pytest -p no:warnings
+
+      - name: Verify saved-results walkthrough
+        run: uv run riskos evaluate

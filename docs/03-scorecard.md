@@ -1,5 +1,8 @@
 # Phase 3 — The WOE scorecard champion
 
+> Detailed reference. Start with the [demo](../README.md); use the
+> [reference index](README.md) to find a specific topic.
+
 **Status: complete.** 15 features · AUC 0.894 train / 0.819 OOT-stress · **and the
 headline finding.**
 

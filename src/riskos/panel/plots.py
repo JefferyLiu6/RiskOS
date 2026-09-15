@@ -40,7 +40,11 @@ def _shade_splits(ax: Axes) -> None:
         ax.text(
             (start + end) / 2,
             ax.get_ylim()[1] * 0.95,
-            name.replace("_", " "),
+            {
+                "train": "Training / validation",
+                "oot_stress": "Crisis test",
+                "oot_benign": "Later-period test",
+            }[name],
             ha="center",
             va="top",
             fontsize=8,
@@ -88,7 +92,7 @@ def default_rate_by_quarter(csv: Path | None = None, out: Path | None = None) ->
     # a genuine spike.
     last = len(x) - 1
     ax.annotate(
-        "2019 windows close in 2020:\nCOVID forbearance, not\neconomic default",
+        "2019 outcomes extend into 2020:\nlabels affected by COVID forbearance",
         xy=(x[last], rate[last]),
         xytext=(x[last] - 7.0, rate[last] * 0.80),
         fontsize=8.5,
@@ -98,7 +102,7 @@ def default_rate_by_quarter(csv: Path | None = None, out: Path | None = None) ->
     ax.set_xlabel("Observation quarter")
     ax.set_ylabel("12-month default rate (%)")
     ax.set_title(
-        "12-month default rate by observation quarter\n"
+        "The crisis changes the default rate\n"
         "Freddie Mac SFLLD sample, U.S. residential mortgages (illustrative)",
         fontsize=11,
         loc="left",

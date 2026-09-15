@@ -23,11 +23,11 @@ log = get_logger(__name__)
 
 FIGURES = Path("reports/figures")
 SPLIT_STYLE = {
-    "train": ("#4C72B0", "o", "train"),
-    "validation_in_time": ("#8FA8CE", "s", "in-time validation"),
-    "oot_stress": ("#C44E52", "^", "OOT stress (2007-09)"),
-    "oot_benign": ("#55A868", "D", "OOT benign (2015-19)"),
-    "oot_benign_ex_forbearance": ("#2E6B45", "v", "OOT benign, ex-COVID forbearance"),
+    "train": ("#4C72B0", "o", "Training"),
+    "validation_in_time": ("#8FA8CE", "s", "Validation"),
+    "oot_stress": ("#C44E52", "^", "Crisis\n2007-09"),
+    "oot_benign": ("#55A868", "D", "Later period\n2015-19"),
+    "oot_benign_ex_forbearance": ("#2E6B45", "v", "Later period\nexcluding\nforbearance"),
 }
 
 
@@ -80,7 +80,7 @@ def reliability(curves: dict[str, pl.DataFrame], out: Path | None = None) -> Pat
     ax.set_xlabel("Mean predicted PD (%)")
     ax.set_ylabel("Observed 12-month default rate (%)")
     ax.set_title(
-        "Reliability by split, with 95% Wilson intervals\n"
+        "Scorecard calibration · 95% Wilson intervals\n"
         "Points above the diagonal mean the model under-predicts default",
         fontsize=10.5,
         loc="left",
@@ -112,11 +112,20 @@ def discrimination_vs_calibration(metrics: pl.DataFrame, out: Path | None = None
     labels = [SPLIT_STYLE[s][2] for s in frame["split"]]
     colours = [SPLIT_STYLE[s][0] for s in frame["split"]]
 
-    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 5.2))
     left.bar(labels, frame["gini"].to_list(), color=colours)
-    left.set_ylabel("Gini")
-    left.set_title("Discrimination holds up", fontsize=10.5, loc="left")
+    fig.suptitle(
+        "Scorecard: useful ranking, underestimated defaults",
+        x=0.06,
+        ha="left",
+        fontsize=16,
+        fontweight="bold",
+    )
+    left.set_ylabel("Gini (higher = better ranking)")
+    left.set_title("Ranking weakens but remains useful", fontsize=10.5, loc="left")
     left.set_ylim(0, 1)
+    for i, value in enumerate(frame["gini"].to_list()):
+        left.text(i, value + 0.02, f"{value:.2f}", ha="center", fontsize=9)
 
     ratios = frame["observed_over_expected"].to_list()
     right.bar(labels, ratios, color=colours)
@@ -125,18 +134,27 @@ def discrimination_vs_calibration(metrics: pl.DataFrame, out: Path | None = None
         len(ratios) - 0.4, 1.06, "perfectly calibrated", fontsize=8, ha="right", color="#333"
     )
     right.set_ylabel("Observed / expected default rate")
-    right.set_title("Calibration does not", fontsize=10.5, loc="left")
+    right.set_title("Default probabilities understate risk", fontsize=10.5, loc="left")
+    right.set_ylim(0, max(ratios) * 1.16)
     for i, value in enumerate(ratios):
         right.text(i, value + 0.06, f"{value:.2f}x", ha="center", fontsize=9)
 
     for ax in (left, right):
-        ax.tick_params(axis="x", labelrotation=12, labelsize=8.5)
+        ax.tick_params(axis="x", labelrotation=0, labelsize=8.5)
         ax.grid(axis="y", alpha=0.25, linewidth=0.6)
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
+    fig.text(
+        0.06,
+        0.02,
+        "Uncalibrated logistic scorecard · saved evaluation results · "
+        "later-period labels are affected by COVID-era forbearance",
+        fontsize=9,
+        color="#555",
+    )
+    fig.tight_layout(rect=(0, 0.07, 1, 0.91))
     fig.savefig(out, dpi=160)
     plt.close(fig)
     log.info("wrote_figure", path=str(out))

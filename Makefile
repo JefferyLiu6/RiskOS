@@ -3,7 +3,7 @@
 PY := uv run
 
 setup:
-	uv sync
+	uv sync --frozen
 
 macro:             ## Phase 1 — pull and cache FRED series (offline after first run)
 	$(PY) riskos macro

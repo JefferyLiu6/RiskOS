@@ -241,12 +241,17 @@ def test_every_required_field_named_in_the_schema_is_present_on_every_model() ->
         assert not missing, f"{entry.get('id')} is missing {missing}"
 
 
+@pytest.mark.needs_data
+@pytest.mark.skipif(
+    not Path("models").exists(), reason="local model artifacts absent; rebuild the pipeline first"
+)
 def test_the_real_estate_has_no_high_severity_discrepancies() -> None:
     """The check that would have caught F-018, run against the live repository.
 
     Kept as a regression test rather than a one-off: any future model whose
     selection outruns its persistence, or whose artefact goes missing, fails
-    here rather than being noticed later.
+    here rather than being noticed later. Only a checkout without the entire
+    ignored models directory skips; a partially built or broken estate fails.
     """
     high = [d for d in reconcile() if d.severity == "high"]
 

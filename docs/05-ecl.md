@@ -1,5 +1,8 @@
 # Phase 5 — Hazard, LGD, ECL, and scenarios
 
+> Detailed reference. Start with the [demo](../README.md); use the
+> [reference index](README.md) to find a specific topic.
+
 **Status: runnable end to end.** Two cause-specific hazards, 304 LGD segments,
 a staged and discounted ECL under three weighted scenarios, and a crisis
 backtest that the overlay fails by half.

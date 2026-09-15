@@ -1,9 +1,4 @@
-"""Command-line entry points, one per Makefile target.
-
-Later phases are declared but not implemented: the build proceeds phase by
-phase, and a stub that raises is honest about where the build has reached
-(build plan §0, rule 2).
-"""
+"""Command-line entry points for the implemented RiskOS pipeline stages."""
 
 from __future__ import annotations
 
@@ -15,11 +10,6 @@ from riskos.config import data_config
 from riskos.log import configure
 
 app = typer.Typer(add_completion=False, help="RiskOS pipeline.")
-
-
-def _not_yet(phase: int, what: str) -> typer.Exit:
-    typer.echo(f"{what} is Phase {phase}; the build has not reached it.", err=True)
-    return typer.Exit(code=2)
 
 
 @app.callback()
@@ -112,14 +102,24 @@ def challenger() -> None:
 
 @app.command()
 def evaluate() -> None:
-    """Phase 3/4 — re-render evaluation exhibits from the persisted CSVs."""
+    """Phase 3/4 — show ranking, calibration, and drift from saved results."""
     import polars as pl
 
     path = "reports/figures/champion_challenger_metrics.csv"
     if not Path(path).exists():
         typer.echo("no comparison found; run `riskos train` then `riskos challenger`", err=True)
         raise typer.Exit(code=2)
-    typer.echo(pl.read_csv(path).filter(pl.col("calibration") == "uncalibrated"))
+    comparison = (
+        pl.read_csv(path)
+        .filter(pl.col("calibration") == "uncalibrated")
+        .select("model", "split", "auc", "observed_over_expected", "score_psi", "psi_band")
+        .rename({"observed_over_expected": "O/E"})
+    )
+    typer.echo("Saved results, uncalibrated models (no training run).")
+    typer.echo("AUC: ranking; O/E: observed / expected defaults (ideal 1); PSI: score drift.")
+    with pl.Config(tbl_cols=6, tbl_width_chars=100, fmt_str_lengths=24, float_precision=4):
+        typer.echo(comparison)
+    typer.echo(f"Full metrics and calibration variants: {path}")
 
 
 @app.command()

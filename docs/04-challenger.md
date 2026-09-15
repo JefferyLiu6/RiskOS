@@ -1,5 +1,8 @@
 # Phase 4 — Challenger, calibration, and selection
 
+> Detailed reference. Start with the [demo](../README.md); use the
+> [reference index](README.md) to find a specific topic.
+
 **Status: complete.** LightGBM selected, 0.4035 vs 0.3648 · **189 tests**
 
 > Two findings here matter more than the winner. First, the build plan's stated

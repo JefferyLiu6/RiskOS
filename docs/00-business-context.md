@@ -1,7 +1,9 @@
-# Business context — why this system exists
+# Business context — provisioning background
 
-*Read this first. Everything else in the repo is a technical answer to a problem
-stated here.*
+> Detailed reference. Start with the [demo](../README.md); use the
+> [reference index](README.md) to find a specific topic.
+
+*Optional background on the wider provisioning problem.*
 
 Building the models is the smaller part of this problem. The larger part is
 understanding **what the number is for, who is accountable for it, and what

@@ -3,7 +3,7 @@
 Two measures on two different scales, so two panels sharing a time axis rather
 than a dual-axis chart. Top: observed-over-expected default rate, the lagging
 calibration indicator that eventually caught 2008. Bottom: score PSI, the leading
-drift indicator that never left the stable band. Both PD models, the same
+drift indicator that stayed below warning during the crisis. Both PD models, the same
 windows, no refitting.
 
 Restricted to 1999-2009 deliberately. The 2015-2019 windows are in the CSVs and
@@ -108,14 +108,14 @@ def _end_labels(ax: Axes, ends: list[tuple[float, float]], fmt: str, merge_withi
 def blind_spot(
     timelines: dict[str, tuple[pl.DataFrame, pl.DataFrame]], out: Path | None = None
 ) -> Path:
-    """Calibration collapsing above a drift indicator that never moves.
+    """Calibration deterioration above score drift that stays low during the crisis.
 
     ``timelines`` maps a series label to its (drift, performance) frames as
     written by ``riskos monitor``.
     """
     out = out or FIGURES / "monitoring_blind_spot.png"
     fig, (top, bottom) = plt.subplots(
-        2, 1, figsize=(9.6, 6.8), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]}
+        2, 1, figsize=(11, 7.6), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]}
     )
     fig.patch.set_facecolor(SURFACE)
 
@@ -163,7 +163,7 @@ def blind_spot(
     )
     # The largest drift reading of the whole run is inside the training window.
     bottom.annotate(
-        f"highest PSI of the run: {peak_psi[1]:.2f}, in-sample",
+        f"highest PSI shown: {peak_psi[1]:.2f} (training period)",
         xy=peak_psi,
         xytext=(peak_psi[0] + 0.6, 0.235),
         color=TEXT_2,
@@ -173,7 +173,7 @@ def blind_spot(
     )
 
     fig.suptitle(
-        "The model broke in 2008. Drift monitoring did not notice.",
+        "Crisis defaults rose. Score drift stayed below warning.",
         x=0.06,
         ha="left",
         fontsize=15,
@@ -184,17 +184,21 @@ def blind_spot(
     fig.text(
         0.06,
         0.935,
-        "Both PD models fitted on 1999-2006, scored quarterly through 2009 without refitting.\n"
-        "Calibration (top) collapses to nearly 5x under-prediction. The score-distribution "
-        "drift metric (bottom) never leaves the stable band.\n"
-        "PSI compares inputs and outputs; what changed in 2008 was the mapping between them.",
+        "Both models fitted on 1999-2006 and evaluated without refitting. Shading marks the 2007-09 crisis.\n"
+        "Observed / expected defaults rise sharply; score PSI stays below 0.10 during the crisis.\n"
+        "PSI measures changes in score distributions; it does not measure prediction accuracy.",
         fontsize=9,
         color=TEXT_2,
         ha="left",
         va="top",
         linespacing=1.5,
     )
-    fig.tight_layout(rect=(0, 0, 1, 0.885))
+    bottom.set_xlabel(
+        "Observation quarter (default outcomes become available 12 months later)",
+        color=TEXT_2,
+        fontsize=9,
+    )
+    fig.tight_layout(rect=(0, 0.02, 1, 0.855))
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=160, facecolor=SURFACE)
     plt.close(fig)

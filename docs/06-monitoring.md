@@ -1,5 +1,8 @@
 # Phase 6 — Monitoring, registry, and serving
 
+> Detailed reference. Start with the [demo](../README.md); use the
+> [reference index](README.md) to find a specific topic.
+
 **Status: complete.** 64 quarterly windows, 2 models, 6 committed rules, an
 inventory-gated scoring service, **366 tests**
 
